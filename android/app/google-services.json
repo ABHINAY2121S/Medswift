@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "36625808600",
+    "project_id": "medswift-8a930",
+    "storage_bucket": "medswift-8a930.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:36625808600:android:dd94709b951f44918c6bad",
+        "android_client_info": {
+          "package_name": "com.example.medswift"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyJSJP9UCWdoOal0aofVUQ41YdPV_ILk4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

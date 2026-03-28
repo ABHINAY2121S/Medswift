@@ -3,7 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
+import '../../models/auth_models.dart';
 import '../../services/transfer_service.dart';
+import '../../services/auth_service.dart';
+import '../../screens/role_selection_screen.dart';
 import 'create_transfer_screen.dart';
 import 'scan_qr_screen.dart';
 import 'transfer_history_screen.dart';
@@ -19,6 +22,7 @@ class DoctorDashboardScreen extends StatefulWidget {
 class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   List<PatientTransfer> _transfers = [];
   bool _loading = true;
+  DoctorProfile? _doctor;
 
   @override
   void initState() {
@@ -28,7 +32,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   Future<void> _load() async {
     final data = await TransferService.getAll();
-    if (mounted) setState(() { _transfers = data; _loading = false; });
+    final doc = await AuthService.getCurrentDoctor();
+    if (mounted) setState(() { _transfers = data; _doctor = doc; _loading = false; });
   }
 
   int get _todayCount {
@@ -76,35 +81,36 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   SliverAppBar _buildAppBar() {
+    final doctorName = _doctor?.name ?? 'Doctor';
+    final hospitalName = _doctor?.hospitalName ?? 'MedSwift';
     return SliverAppBar(
       pinned: true,
       backgroundColor: AppColors.bg,
       surfaceTintColor: Colors.transparent,
-      leading: IconButton(
-        icon: Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)]),
-          child: const Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.dark),
-        ),
-        onPressed: () => Navigator.pop(context),
-      ),
+      automaticallyImplyLeading: false,
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Container(
+        IconButton(
+          tooltip: 'Logout',
+          icon: Container(
             width: 38, height: 38,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.person_rounded, size: 20, color: AppColors.primary),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)]),
+            child: const Icon(Icons.logout_rounded, size: 18, color: AppColors.danger),
           ),
+          onPressed: () async {
+            await AuthService.logoutDoctor();
+            if (mounted) {
+              Navigator.pushAndRemoveUntil(context,
+                  MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                  (r) => false);
+            }
+          },
         ),
+        const SizedBox(width: 8),
       ],
-      expandedHeight: 110,
+      expandedHeight: 120,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         title: Column(
@@ -112,10 +118,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Welcome back,',
-                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted)),
-            Text('Dr. Sarah Chen',
+                style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted)),
+            Text(doctorName,
                 style: GoogleFonts.dmSans(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark)),
+                    fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.dark)),
+            Text(hospitalName,
+                style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.primary)),
           ],
         ),
       ),

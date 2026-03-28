@@ -170,7 +170,7 @@ class PatientTransfer {
 
   String get viewerUrl {
     final encoded = toBase64();
-    return 'https://medswift.app/view?data=$encoded';
+    return 'https://abhinay2121s.github.io/Medswift/viewer.html?data=$encoded';
   }
 
   String get shortLink => 'medswift.app/t/$id';

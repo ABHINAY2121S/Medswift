@@ -38,24 +38,69 @@ class TransferService {
   }
 
   /// Suggests risk level based on vitals and diagnosis
+  /// Clinical thresholds:
+  ///   BP: Critical if systolic <80 or >180; Moderate if <90 or >160
+  ///   HR: Critical if <40 or >130; Moderate if <60 or >100
+  ///   SpO2: Critical if <90%; Moderate if <95%
+  ///   Temp (°F): Critical if <95 or >104; Moderate if >100.4
   static String suggestRisk(Vitals v, String diagnosis) {
-    final criticalDx = ['infarction', 'stroke', 'hemorrhage', 'trauma', 'sepsis', 'cardiac', 'arrest', 'failure'];
+    int score = 0; // 0=safe, 1=moderate, 2=critical
+
+    // ── Diagnosis keywords ─────────────────────────────────────────────────
+    final criticalDx = ['infarction', 'stroke', 'hemorrhage', 'polytrauma',
+        'sepsis', 'cardiac arrest', 'respiratory failure', 'shock',
+        'pulmonary embolism', 'aneurysm', 'coma'];
+    final moderateDx = ['fracture', 'pneumonia', 'appendicitis', 'diabetic',
+        'hypertensive', 'angina', 'arrhythmia', 'altered consciousness'];
     final diagLower = diagnosis.toLowerCase();
     for (final dx in criticalDx) {
-      if (diagLower.contains(dx)) return 'critical';
+      if (diagLower.contains(dx)) { score = 2; break; }
     }
-    // Check vitals
+    if (score < 2) {
+      for (final dx in moderateDx) {
+        if (diagLower.contains(dx)) { score = score < 1 ? 1 : score; break; }
+      }
+    }
+
+    // ── Heart Rate ─────────────────────────────────────────────────────────
     if (v.pulse.isNotEmpty) {
-      final pulse = int.tryParse(v.pulse) ?? 0;
-      if (pulse > 120 || pulse < 50) return 'critical';
-      if (pulse > 100) return 'moderate';
+      final hr = int.tryParse(v.pulse.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      if (hr > 0) {
+        if (hr < 40 || hr > 130) score = 2;
+        else if ((hr < 60 || hr > 100) && score < 2) score = score < 1 ? 1 : score;
+      }
     }
+
+    // ── Blood Pressure ──────────────────────────────────────────────────────
     if (v.bp.contains('/')) {
       final parts = v.bp.split('/');
-      final sys = int.tryParse(parts[0]) ?? 120;
-      if (sys < 90 || sys > 180) return 'critical';
-      if (sys < 100 || sys > 160) return 'moderate';
+      final sys = int.tryParse(parts[0].replaceAll(RegExp(r'[^0-9]'), '')) ?? 120;
+      final dia = parts.length > 1
+          ? (int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 80)
+          : 80;
+      if (sys < 80 || sys > 180 || dia > 120) score = 2;
+      else if ((sys < 90 || sys > 160 || dia > 100) && score < 2) score = score < 1 ? 1 : score;
     }
+
+    // ── SpO2 ───────────────────────────────────────────────────────────────
+    if (v.spo2.isNotEmpty) {
+      final spo2 = int.tryParse(v.spo2.replaceAll(RegExp(r'[^0-9]'), '')) ?? 100;
+      if (spo2 < 90) score = 2;
+      else if (spo2 < 95 && score < 2) score = score < 1 ? 1 : score;
+    }
+
+    // ── Temperature (°F) ──────────────────────────────────────────────────
+    if (v.temp.isNotEmpty) {
+      final tempStr = v.temp.replaceAll(RegExp(r'[^0-9.]'), '');
+      final temp = double.tryParse(tempStr) ?? 98.6;
+      // If entered in Celsius (values <45), convert to °F
+      final tempF = temp < 45 ? (temp * 9 / 5) + 32 : temp;
+      if (tempF < 95.0 || tempF > 104.0) score = 2;
+      else if (tempF > 100.4 && score < 2) score = score < 1 ? 1 : score;
+    }
+
+    if (score >= 2) return 'critical';
+    if (score == 1) return 'moderate';
     return 'safe';
   }
 
