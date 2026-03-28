@@ -1,0 +1,72 @@
+Analyzing medswift...                                           
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:137:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:155:66 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:249:76 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:346:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:377:66 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:382:73 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\create_transfer_screen.dart:386:73 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\screens\doctor\create_transfer_screen.dart:411:11 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:89:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:100:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:163:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:199:63 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\screens\doctor\doctor_dashboard_screen.dart:258:30 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\screens\doctor\doctor_dashboard_screen.dart:259:33 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\screens\doctor\doctor_dashboard_screen.dart:260:10 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:276:57 - deprecated_member_use
+   info - Use interpolation to compose strings and values - lib\screens\doctor\doctor_dashboard_screen.dart:292:57 - prefer_interpolation_to_compose_strings
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_dashboard_screen.dart:340:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\qr_display_screen.dart:27:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\qr_display_screen.dart:47:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\qr_display_screen.dart:179:64 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\review_screen.dart:72:26 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\review_screen.dart:90:26 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:109:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:180:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:259:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:298:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:328:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:358:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:378:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:511:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:533:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\review_screen.dart:561:33 - deprecated_member_use
+warning - Unused import: 'package:flutter_animate/flutter_animate.dart' - lib\screens\doctor\scan_qr_screen.dart:2:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\scan_qr_screen.dart:101:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\scan_qr_screen.dart:151:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\scan_qr_screen.dart:264:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\transfer_history_screen.dart:58:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\transfer_history_screen.dart:162:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:73:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:122:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:197:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:221:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:259:66 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:340:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_dashboard_screen.dart:378:55 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\screens\patient\patient_login_screen.dart:64:26 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_login_screen.dart:101:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\patient_login_screen.dart:135:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:24:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:51:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:55:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:69:47 - deprecated_member_use
+  error - Arguments of a constant creation must be constant expressions - lib\screens\patient\transfer_detail_screen.dart:93:35 - const_with_non_constant_argument
+  error - The getter 'stethoscope_rounded' isn't defined for the type 'Icons' - lib\screens\patient\transfer_detail_screen.dart:93:41 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:128:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_detail_screen.dart:244:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_timeline_screen.dart:22:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_timeline_screen.dart:108:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\patient\transfer_timeline_screen.dart:138:61 - deprecated_member_use
+  error - Arguments of a constant creation must be constant expressions - lib\screens\patient\transfer_timeline_screen.dart:176:34 - const_with_non_constant_argument
+  error - The getter 'stethoscope' isn't defined for the type 'Icons' - lib\screens\patient\transfer_timeline_screen.dart:176:40 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\role_selection_screen.dart:26:44 - deprecated_member_use
+  error - The getter 'stethoscope_rounded' isn't defined for the type 'Icons' - lib\screens\role_selection_screen.dart:62:29 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\role_selection_screen.dart:100:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\role_selection_screen.dart:142:39 - deprecated_member_use
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\theme\app_theme.dart:30:9 - deprecated_member_use
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+
+68 issues found. (ran in 2.0s)

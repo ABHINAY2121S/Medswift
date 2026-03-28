@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="description" content="MedSwift - Patient Transfer Record Viewer. Secure, instant access to patient transfer information for receiving doctors.">
+  <title>MedSwift — Patient Transfer Record</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #F8F9FC; --card: #FFFFFF; --primary: #1A56DB; --accent: #0E9F6E;
+      --danger: #DC2626; --warn: #F59E0B; --muted: #6B7280; --dark: #111928;
+      --border: #F3F4F6; --red-light: #FEF2F2; --green-light: #ECFDF5;
+      --blue-light: #EFF6FF; --yellow-light: #FFFBEB;
+    }
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--dark); }
+    body { padding: 0; }
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+    /* Loading */
+    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; gap: 16px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Header */
+    .app-header { background: var(--dark); padding: 14px 20px; position: sticky; top: 0; z-index: 100; }
+    .app-header-inner { max-width: 480px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .app-logo { font-family: 'Space Mono'; font-size: 16px; font-weight: 700; color: white; }
+    .app-tagline { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .header-badge { margin-left: auto; background: rgba(220,38,38,0.2); border: 1px solid rgba(220,38,38,0.4);
+      color: #FCA5A5; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+      letter-spacing: 0.8px; }
+
+    /* Critical snapshot — always visible on load */
+    .snapshot-card { border-radius: 20px; padding: 20px; margin-bottom: 16px; color: white;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15); position: relative; overflow: hidden; }
+    .snapshot-card.critical { background: linear-gradient(135deg, #DC2626, #B91C1C); }
+    .snapshot-card.moderate { background: linear-gradient(135deg, #F59E0B, #D97706); }
+    .snapshot-card.safe { background: linear-gradient(135deg, #059669, #047857); }
+    .snapshot-deco { position: absolute; top: -30px; right: -30px; width: 100px; height: 100px;
+      border-radius: 50%; background: rgba(255,255,255,0.08); }
+    .snapshot-label { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700;
+      color: rgba(255,255,255,0.7); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+    .snapshot-name { font-size: 24px; font-weight: 700; line-height: 1.2; }
+    .snapshot-sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .vitals-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+    .vital-box { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 8px 4px; text-align: center; }
+    .vital-val { font-family: 'Space Mono'; font-size: 13px; font-weight: 700; color: white; }
+    .vital-lbl { font-size: 9px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    .allergy-box { background: rgba(255,255,255,0.18); border-radius: 14px; padding: 12px; margin-bottom: 8px; }
+    .allergy-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); letter-spacing: 1px; margin-bottom: 4px; }
+    .allergy-val { font-size: 15px; font-weight: 700; color: white; }
+    .meds-box { background: rgba(255,255,255,0.12); border-radius: 14px; padding: 12px; }
+    .meds-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); letter-spacing: 1px; margin-bottom: 4px; }
+    .meds-val { font-size: 13px; color: white; line-height: 1.5; }
+
+    /* Section */
+    .section-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px;
+      text-transform: uppercase; margin: 20px 0 10px; }
+
+    /* Cards */
+    .info-card { background: var(--card); border-radius: 16px; padding: 16px;
+      border: 1px solid var(--border); margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .info-card-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 6px; }
+    .info-card-value { font-size: 14px; color: var(--dark); line-height: 1.5; }
+    .info-card-value.bold { font-weight: 600; }
+
+    /* Vitals detail */
+    .vitals-detail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .vital-detail-box { background: var(--bg); border-radius: 12px; padding: 10px 4px; text-align: center; }
+    .vital-detail-val { font-family: 'Space Mono'; font-size: 12px; font-weight: 700; color: var(--dark); }
+    .vital-detail-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* Referring */
+    .referring-row { display: flex; align-items: center; gap: 12px; }
+    .referring-icon { width: 36px; height: 36px; background: var(--blue-light); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .referring-icon svg { width: 18px; height: 18px; stroke: var(--primary); fill: none; stroke-width: 2; }
+    .referring-hospital { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .referring-doctor { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    /* Risk badge */
+    .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px; letter-spacing: 0.5px; }
+    .badge.critical { background: var(--red-light); color: var(--danger); }
+    .badge.moderate { background: var(--yellow-light); color: var(--warn); }
+    .badge.safe { background: var(--green-light); color: var(--accent); }
+
+    /* Actions */
+    .action-section { margin-top: 8px; }
+    .btn { width: 100%; padding: 16px; border-radius: 16px; font-family: 'DM Sans';
+      font-size: 15px; font-weight: 700; border: none; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; gap: 8px; transition: 0.2s; margin-bottom: 10px; }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(14,159,110,0.3); }
+    .btn-secondary { background: white; color: var(--dark); border: 1px solid var(--border); }
+    .btn-warn { background: var(--yellow-light); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+    .btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    /* Note textarea */
+    .note-area { background: white; border-radius: 16px; padding: 16px;
+      border: 1px solid var(--border); margin-bottom: 10px; display: none; }
+    .note-area.show { display: block; }
+    .note-area textarea { width: 100%; min-height: 80px; border: none; background: var(--bg);
+      border-radius: 12px; padding: 12px; font-family: 'DM Sans'; font-size: 14px;
+      color: var(--dark); resize: none; outline: none; }
+    .note-area textarea:focus { box-shadow: 0 0 0 2px rgba(26,86,219,0.2); }
+    .note-save { margin-top: 8px; background: var(--primary); color: white; border: none;
+      padding: 10px 20px; border-radius: 12px; font-family: 'DM Sans'; font-weight: 700;
+      font-size: 14px; cursor: pointer; }
+
+    /* Acknowledged state */
+    .ack-badge { background: var(--green-light); border: 1px solid rgba(14,159,110,0.2);
+      border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px; }
+    .ack-badge svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; }
+    .ack-text { font-size: 14px; font-weight: 600; color: var(--accent); }
+
+    /* Flagged state */
+    .flagged-badge { background: var(--yellow-light); border-radius: 14px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 8px; }
+    .flagged-badge svg { width: 16px; height: 16px; stroke: var(--warn); fill: none; stroke-width: 2; }
+    .flagged-text { font-size: 12px; font-weight: 600; color: var(--warn); }
+
+    /* Access log */
+    .log-entry { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .log-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .log-dot.created { background: var(--primary); }
+    .log-dot.reviewed { background: var(--accent); }
+    .log-dot.flagged { background: var(--warn); }
+    .log-dot.noted { background: var(--primary); }
+    .log-name { font-size: 13px; font-weight: 500; color: var(--dark); }
+    .log-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .log-time { font-size: 11px; color: var(--muted); margin-left: auto; flex-shrink: 0; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--dark); color: white; padding: 12px 20px; border-radius: 14px;
+      font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 9999;
+      display: flex; align-items: center; gap: 8px; pointer-events: none; white-space: nowrap; }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast svg { stroke: var(--accent); fill: none; stroke-width: 2; width: 16px; height: 16px; }
+
+    /* Error */
+    #error-state { display: none; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; gap: 16px; padding: 24px; text-align: center; }
+
+    /* Offline banner */
+    .offline-banner { background: var(--warn); color: white; padding: 8px 16px; text-align: center;
+      font-size: 12px; font-weight: 600; display: none; }
+    .offline-banner.show { display: block; }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0F172A; --card: #1E293B; --border: #334155; --dark: #F1F5F9; --muted: #94A3B8; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Offline banner -->
+<div class="offline-banner" id="offline-banner">⚡ Offline mode — data loaded from QR code</div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color:var(--muted);font-size:14px;">Loading patient record…</p>
+</div>
+
+<!-- Error -->
+<div id="error-state">
+  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <h2 style="color:var(--dark);font-size:20px;font-weight:700;">Record Not Found</h2>
+  <p style="color:var(--muted);font-size:14px;max-width:280px;">The transfer record could not be loaded. The link may be invalid or expired.</p>
+</div>
+
+<!-- App Header -->
+<div class="app-header" id="app-header" style="display:none;">
+  <div class="app-header-inner">
+    <div>
+      <div class="app-logo">⚕ MedSwift</div>
+      <div class="app-tagline">Patient Transfer Record</div>
+    </div>
+    <div class="header-badge" id="risk-header-badge">CRITICAL</div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div id="main-content" style="display:none;">
+  <div class="container">
+
+    <!-- ═══ CRITICAL INFO (Priority Section) ═══ -->
+    <div class="section-title" style="margin-top:16px;">⚡ CRITICAL INFORMATION</div>
+
+    <div class="snapshot-card critical" id="snapshot-card">
+      <div class="snapshot-deco"></div>
+      <div class="snapshot-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        90-Second Snapshot
+      </div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div>
+          <div class="snapshot-name" id="patient-name">—</div>
+          <div class="snapshot-sub" id="patient-sub">—</div>
+        </div>
+        <div id="risk-emoji-box" style="background:rgba(255,255,255,0.2);border-radius:14px;padding:10px 14px;text-align:center;min-width:64px;">
+          <div style="font-size:22px;" id="risk-emoji">🔴</div>
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.8);" id="risk-label">CRITICAL</div>
+        </div>
+      </div>
+
+      <div class="vitals-row" id="vitals-row">
+        <div class="vital-box"><div class="vital-val" id="v-bp">—</div><div class="vital-lbl">BP</div></div>
+        <div class="vital-box"><div class="vital-val" id="v-pulse">—</div><div class="vital-lbl">PULSE</div></div>
+        <div class="vital-box"><div class="vital-val" id="v-temp">—</div><div class="vital-lbl">TEMP</div></div>
+        <div class="vital-box"><div class="vital-val" id="v-spo2">—</div><div class="vital-lbl">SPO2</div></div>
+      </div>
+
+      <div class="allergy-box">
+        <div class="allergy-label">⚠ ALLERGIES — MUST READ BEFORE TREATMENT</div>
+        <div class="allergy-val" id="allergies-val">—</div>
+      </div>
+
+      <div class="meds-box">
+        <div class="meds-label">ACTIVE MEDICATIONS — DO NOT STOP</div>
+        <div class="meds-val" id="meds-val">—</div>
+      </div>
+    </div>
+
+    <!-- Reason for Transfer — prominent -->
+    <div class="info-card" style="border-left:4px solid var(--primary);">
+      <div class="info-card-label">Reason for Transfer</div>
+      <div class="info-card-value bold" id="transfer-reason">—</div>
+    </div>
+
+    <!-- ═══ FULL RECORD ═══ -->
+    <div class="section-title">Full Patient Record</div>
+
+    <div class="info-card">
+      <div class="info-card-label">Patient Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+        <div>
+          <div style="font-size:10px;color:var(--muted);">Name</div>
+          <div style="font-size:14px;font-weight:600;" id="d-name">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);">Age / Gender</div>
+          <div style="font-size:14px;font-weight:600;" id="d-age-gender">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);">Patient ID</div>
+          <div style="font-size:13px;font-family:'Space Mono';color:var(--primary);" id="d-patid">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);">Risk Level</div>
+          <div id="d-risk-badge" class="badge critical" style="margin-top:4px;">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-label">Primary Diagnosis</div>
+      <div class="info-card-value bold" id="d-diagnosis">—</div>
+    </div>
+
+    <div class="info-card" style="background:var(--red-light);border-color:rgba(220,38,38,0.2);">
+      <div class="info-card-label" style="color:#DC2626;">⚠ Allergies (Critical)</div>
+      <div class="info-card-value bold" style="color:#DC2626;" id="d-allergies">—</div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-label">Current Medications</div>
+      <div class="info-card-value" id="d-meds">—</div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-label">Vitals</div>
+      <div class="vitals-detail">
+        <div class="vital-detail-box"><div class="vital-detail-val" id="d-bp">—</div><div class="vital-detail-lbl">BP</div></div>
+        <div class="vital-detail-box"><div class="vital-detail-val" id="d-pulse">—</div><div class="vital-detail-lbl">Pulse</div></div>
+        <div class="vital-detail-box"><div class="vital-detail-val" id="d-temp">—</div><div class="vital-detail-lbl">Temp</div></div>
+        <div class="vital-detail-box"><div class="vital-detail-val" id="d-spo2">—</div><div class="vital-detail-lbl">SpO2</div></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-label">Referring Doctor</div>
+      <div class="referring-row">
+        <div class="referring-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div>
+          <div class="referring-hospital" id="d-hospital">—</div>
+          <div class="referring-doctor" id="d-doctor">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card" id="d-summary-card" style="display:none;">
+      <div class="info-card-label">Clinical Summary</div>
+      <div class="info-card-value" id="d-summary" style="line-height:1.6;">—</div>
+    </div>
+
+    <!-- ═══ ACTIONS ═══ -->
+    <div class="section-title">Actions</div>
+    <div class="action-section">
+
+      <div class="ack-badge" id="ack-badge" style="display:none;">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span class="ack-text">Transfer Reviewed — <span id="ack-time"></span></span>
+      </div>
+
+      <button class="btn btn-primary" id="btn-ack" onclick="markReviewed()">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Mark as Reviewed
+      </button>
+
+      <button class="btn btn-secondary" id="btn-note" onclick="toggleNote()">
+        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Add Arrival Note
+      </button>
+
+      <div class="note-area" id="note-area">
+        <textarea id="note-textarea" placeholder="Enter arrival note..."></textarea>
+        <button class="note-save" onclick="saveNote()">Save Note</button>
+      </div>
+
+      <div class="flagged-badge" id="flagged-badge" style="display:none;">
+        <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <span class="flagged-text">Discrepancy Flagged</span>
+      </div>
+
+      <button class="btn btn-warn" id="btn-flag" onclick="flagDiscrepancy()">
+        <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Flag Discrepancy
+      </button>
+    </div>
+
+    <!-- Access Log -->
+    <div class="section-title">Access Log</div>
+    <div class="info-card" id="access-log-container">
+      <div id="access-log">
+        <div style="color:var(--muted);font-size:13px;">No access logs yet.</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;padding:24px 0 40px;color:var(--muted);font-size:11px;">
+      <div>⚕ MedSwift — Smart Patient Transfer System</div>
+      <div style="margin-top:4px;">For medical professional use only • No login required</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast">
+  <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  <span id="toast-text">Done</span>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'medswift_viewer_state';
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function $ (id) { return document.getElementById(id); }
+  function setText(id, val) { const el = $(id); if (el) el.textContent = val || '—'; }
+
+  function showToast(msg, success = true) {
+    const t = $('toast');
+    $('toast-text').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function timeAgo(ms) {
+    const d = Date.now() - ms;
+    if (d < 60000) return 'just now';
+    if (d < 3600000) return Math.floor(d/60000) + 'm ago';
+    if (d < 86400000) return Math.floor(d/3600000) + 'h ago';
+    return Math.floor(d/86400000) + 'd ago';
+  }
+
+  function formatDate(ms) {
+    return new Date(ms).toLocaleString(undefined, {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  // ── Load State ───────────────────────────────────────────────────────────
+  function getViewerState(transferId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return all[transferId] || { reviewed: false, reviewedAt: null, note: '', flagged: false, logs: [] };
+    } catch { return { reviewed: false, reviewedAt: null, note: '', flagged: false, logs: [] }; }
+  }
+
+  function saveViewerState(transferId, state) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      all[transferId] = state;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
+  // ── Parse transfer data ───────────────────────────────────────────────────
+  function parseTransfer() {
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get('data');
+    if (!encoded) return null;
+    try {
+      return JSON.parse(atob(encoded));
+    } catch { return null; }
+  }
+
+  // ── Demo data ─────────────────────────────────────────────────────────────
+  function getDemoTransfer() {
+    return {
+      id: 'DEMO001',
+      patientName: 'Amir Patel',
+      patientAge: 58,
+      patientGender: 'Male',
+      patientId: 'MR-2024-0847',
+      diagnosis: 'Acute Myocardial Infarction',
+      allergies: 'Penicillin, Sulfa drugs',
+      medications: 'Aspirin 81mg, Metoprolol 50mg, Atorvastatin 40mg',
+      clinicalSummary: 'Patient presented with chest pain radiating to left arm. ECG shows STEMI. Immediate intervention required. Troponin levels elevated at 2.4 ng/mL.',
+      transferReason: 'Requires cardiac catheterization — not available at current facility',
+      vitals: { bp: '90/60', pulse: '112', temp: '99.1°F', spo2: '94%' },
+      riskLevel: 'critical',
+      sendingHospital: 'City General Hospital',
+      sendingDoctor: 'Dr. James Wilson',
+      receivingHospital: 'Metro Heart Center',
+      createdAt: new Date(Date.now() - 14 * 60000).toISOString(),
+      accessLogs: [
+        { doctorName: 'Dr. James Wilson', hospital: 'City General Hospital', timestamp: new Date(Date.now() - 14 * 60000).toISOString(), action: 'created' }
+      ]
+    };
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  let _transfer = null;
+  let _state = null;
+
+  function render() {
+    const t = _transfer;
+    const risk = (t.riskLevel || 'safe').toLowerCase();
+    const riskLabels = { critical: '🔴', moderate: '🟡', safe: '🟢' };
+
+    // Snapshot card class
+    $('snapshot-card').className = `snapshot-card ${risk}`;
+    // Header badge
+    $('risk-header-badge').textContent = risk.toUpperCase();
+    $('risk-header-badge').style.background = risk === 'critical' ? 'rgba(220,38,38,0.2)' : risk === 'moderate' ? 'rgba(245,158,11,0.2)' : 'rgba(14,159,110,0.2)';
+    $('risk-header-badge').style.color = risk === 'critical' ? '#FCA5A5' : risk === 'moderate' ? '#FDE68A' : '#6EE7B7';
+
+    // Snapshot
+    setText('patient-name', t.patientName);
+    setText('patient-sub', `${t.patientAge}${t.patientGender ? t.patientGender[0] : ''} • ID: ${t.patientId}`);
+    setText('risk-emoji', riskLabels[risk] || '🟢');
+    setText('risk-label', risk.toUpperCase());
+
+    // Vitals snapshot
+    setText('v-bp', t.vitals?.bp || '—');
+    setText('v-pulse', t.vitals?.pulse || '—');
+    setText('v-temp', t.vitals?.temp || '—');
+    setText('v-spo2', t.vitals?.spo2 || '—');
+
+    // Allergy + meds
+    setText('allergies-val', t.allergies);
+    setText('meds-val', t.medications);
+    setText('transfer-reason', t.transferReason);
+
+    // Full record
+    setText('d-name', t.patientName);
+    setText('d-age-gender', `${t.patientAge} yrs / ${t.patientGender}`);
+    setText('d-patid', t.patientId);
+    const riskBadge = $('d-risk-badge');
+    riskBadge.textContent = risk.toUpperCase();
+    riskBadge.className = `badge ${risk}`;
+
+    setText('d-diagnosis', t.diagnosis);
+    setText('d-allergies', t.allergies);
+    setText('d-meds', t.medications);
+    setText('d-bp', t.vitals?.bp || '—');
+    setText('d-pulse', t.vitals?.pulse || '—');
+    setText('d-temp', t.vitals?.temp || '—');
+    setText('d-spo2', t.vitals?.spo2 || '—');
+    setText('d-hospital', t.sendingHospital);
+    setText('d-doctor', t.sendingDoctor);
+
+    if (t.clinicalSummary) {
+      $('d-summary-card').style.display = '';
+      setText('d-summary', t.clinicalSummary);
+    }
+
+    // Actions
+    renderActionState();
+    renderAccessLog();
+  }
+
+  function renderActionState() {
+    if (_state.reviewed) {
+      $('btn-ack').style.display = 'none';
+      $('ack-badge').style.display = 'flex';
+      $('ack-time').textContent = _state.reviewedAt ? formatDate(_state.reviewedAt) : '';
+    }
+    if (_state.flagged) {
+      $('btn-flag').style.display = 'none';
+      $('flagged-badge').style.display = 'flex';
+    }
+    if (_state.note) {
+      $('note-textarea').value = _state.note;
+    }
+  }
+
+  function renderAccessLog() {
+    const logs = [
+      ...(_transfer.accessLogs || []).map(l => ({...l, ts: new Date(l.timestamp).getTime()})),
+      ...(_state.logs || [])
+    ].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+    if (logs.length === 0) return;
+
+    $('access-log').innerHTML = logs.slice(0, 10).map(log => `
+      <div class="log-entry">
+        <div class="log-dot ${log.action || 'created'}"></div>
+        <div>
+          <div class="log-name">${log.doctorName} <span style="color:var(--muted);font-weight:400;">• ${log.action}</span></div>
+          <div class="log-sub">${log.hospital}</div>
+        </div>
+        <div class="log-time">${timeAgo(log.ts || new Date(log.timestamp).getTime())}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  window.markReviewed = function() {
+    _state.reviewed = true;
+    _state.reviewedAt = Date.now();
+    _state.logs.push({
+      doctorName: 'Receiving Doctor',
+      hospital: 'Receiving Hospital',
+      action: 'reviewed',
+      ts: Date.now(),
+      timestamp: new Date().toISOString()
+    });
+    saveViewerState(_transfer.id, _state);
+    renderActionState();
+    renderAccessLog();
+    showToast('Transfer marked as reviewed');
+  };
+
+  window.toggleNote = function() {
+    const na = $('note-area');
+    na.classList.toggle('show');
+  };
+
+  window.saveNote = function() {
+    const val = $('note-textarea').value.trim();
+    if (!val) return;
+    _state.note = val;
+    _state.logs.push({
+      doctorName: 'Receiving Doctor',
+      hospital: 'Receiving Hospital',
+      action: 'noted',
+      ts: Date.now(),
+      timestamp: new Date().toISOString()
+    });
+    saveViewerState(_transfer.id, _state);
+    $('note-area').classList.remove('show');
+    renderAccessLog();
+    showToast('Arrival note saved');
+  };
+
+  window.flagDiscrepancy = function() {
+    _state.flagged = true;
+    _state.logs.push({
+      doctorName: 'Receiving Doctor',
+      hospital: 'Receiving Hospital',
+      action: 'flagged',
+      ts: Date.now(),
+      timestamp: new Date().toISOString()
+    });
+    saveViewerState(_transfer.id, _state);
+    renderActionState();
+    renderAccessLog();
+    showToast('Discrepancy flagged and logged');
+  };
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  function init() {
+    // Check offline
+    if (!navigator.onLine) {
+      $('offline-banner').classList.add('show');
+    }
+
+    let transfer = parseTransfer();
+    const isDemo = !transfer;
+    if (!transfer) transfer = getDemoTransfer();
+
+    _transfer = transfer;
+    _state = getViewerState(transfer.id);
+
+    // Log this view
+    _state.logs.push({
+      doctorName: 'Receiving Doctor',
+      hospital: window.location.hostname || 'Web Browser',
+      action: 'viewed',
+      ts: Date.now(),
+      timestamp: new Date().toISOString()
+    });
+    saveViewerState(transfer.id, _state);
+
+    // Fade in
+    $('loading').style.display = 'none';
+    $('app-header').style.display = '';
+    $('main-content').style.display = '';
+    if (isDemo) showToast('Demo mode — no QR data found', false);
+
+    render();
+  }
+
+  // Wait for fonts
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 400); // slight delay to show loading
+  }
+})();
+</script>
+</body>
+</html>
