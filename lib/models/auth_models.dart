@@ -1,11 +1,12 @@
 class DoctorProfile {
-  final String id;
+  final String id;        // phone (normalized, e.g. +919876543210)
   final String name;
   final String phone;
   final String hospitalId;
   final String hospitalName;
   final String licenseNo;
   final String role; // 'doctor', 'nurse', 'admin'
+  final String pinHash; // SHA-256 of the 4-digit PIN
   final DateTime registeredAt;
 
   DoctorProfile({
@@ -16,6 +17,7 @@ class DoctorProfile {
     required this.hospitalName,
     required this.licenseNo,
     this.role = 'doctor',
+    required this.pinHash,
     required this.registeredAt,
   });
 
@@ -27,6 +29,7 @@ class DoctorProfile {
     'hospitalName': hospitalName,
     'licenseNo': licenseNo,
     'role': role,
+    'pinHash': pinHash,
     'registeredAt': registeredAt.toIso8601String(),
   };
 
@@ -38,6 +41,7 @@ class DoctorProfile {
     hospitalName: j['hospitalName'],
     licenseNo: j['licenseNo'] ?? '',
     role: j['role'] ?? 'doctor',
+    pinHash: j['pinHash'] ?? '',
     registeredAt: DateTime.parse(j['registeredAt']),
   );
 }
@@ -79,11 +83,12 @@ class HospitalProfile {
 }
 
 class PatientProfile {
-  final String id; // internal
+  final String id;        // phone (normalized)
   final String patientId; // e.g. MR-2024-XXXX
   final String name;
   final String phone;
   final String dob; // DD/MM/YYYY
+  final String pinHash; // SHA-256 of the 4-digit PIN
   final DateTime registeredAt;
 
   PatientProfile({
@@ -92,6 +97,7 @@ class PatientProfile {
     required this.name,
     required this.phone,
     required this.dob,
+    required this.pinHash,
     required this.registeredAt,
   });
 
@@ -101,6 +107,7 @@ class PatientProfile {
     'name': name,
     'phone': phone,
     'dob': dob,
+    'pinHash': pinHash,
     'registeredAt': registeredAt.toIso8601String(),
   };
 
@@ -110,6 +117,7 @@ class PatientProfile {
     name: j['name'],
     phone: j['phone'],
     dob: j['dob'] ?? '',
+    pinHash: j['pinHash'] ?? '',
     registeredAt: DateTime.parse(j['registeredAt']),
   );
 }

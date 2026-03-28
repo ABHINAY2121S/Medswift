@@ -1,81 +1,29 @@
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 
-/// AuthService wraps Firebase Phone Auth + Firestore.
-/// OTP is sent by Firebase — real SMS via Google's infrastructure.
+/// PIN-based auth service — no OTP, no Firebase Auth.
+/// Authentication is done by looking up phone + comparing pinHash in Firestore.
 class AuthService {
-  static final _auth = FirebaseAuth.instance;
   static final _db = FirebaseFirestore.instance;
 
-  static const _doctorSessionKey = 'session_doctor_id';
-  static const _patientSessionKey = 'session_patient_id';
+  static const _doctorSessionKey = 'session_doctor_phone';
+  static const _patientSessionKey = 'session_patient_phone';
 
-  // ─── Phone OTP via Firebase ──────────────────────────────────────────────
+  // ─── PIN Hashing ─────────────────────────────────────────────────────────
 
-  /// Sends OTP to [phone]. On success calls [onCodeSent] with verificationId.
-  /// On error calls [onError] with a user-friendly message.
-  static Future<void> sendOtp(
-    String phone, {
-    required void Function(String verificationId) onCodeSent,
-    required void Function(String error) onError,
-    void Function(PhoneAuthCredential)? onAutoVerified,
-  }) async {
-    // Ensure E.164 format (+91XXXXXXXXXX)
-    String e164 = phone.trim();
-    if (!e164.startsWith('+')) e164 = '+91$e164';
-
-    await _auth.verifyPhoneNumber(
-      phoneNumber: e164,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (credential) {
-        // Auto-fill on Android (SMS auto-read)
-        onAutoVerified?.call(credential);
-      },
-      verificationFailed: (e) {
-        String msg;
-        switch (e.code) {
-          case 'invalid-phone-number':
-            msg = 'Invalid phone number format.';
-            break;
-          case 'too-many-requests':
-            msg = 'Too many attempts. Try again later.';
-            break;
-          case 'quota-exceeded':
-            msg = 'SMS quota exceeded. Contact support.';
-            break;
-          default:
-            msg = e.message ?? 'SMS failed. Check your number.';
-        }
-        onError(msg);
-      },
-      codeSent: (verificationId, resendToken) {
-        onCodeSent(verificationId);
-      },
-      codeAutoRetrievalTimeout: (_) {},
-    );
+  static String hashPin(String pin) {
+    final bytes = utf8.encode(pin.trim());
+    return sha256.convert(bytes).toString();
   }
 
-  /// Signs in with [verificationId] and [smsCode] entered by user.
-  /// Returns the FirebaseAuth [User] on success, throws on failure.
-  static Future<User> verifyOtp(String verificationId, String smsCode) async {
-    final credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode.trim(),
-    );
-    final result = await _auth.signInWithCredential(credential);
-    return result.user!;
+  static String normalizePhone(String phone) {
+    String p = phone.trim().replaceAll(' ', '').replaceAll('-', '');
+    if (!p.startsWith('+')) p = '+91$p';
+    return p;
   }
-
-  /// Signs in using an auto-verified credential (Android SMS auto-read).
-  static Future<User> signInWithCredential(PhoneAuthCredential c) async {
-    final result = await _auth.signInWithCredential(c);
-    return result.user!;
-  }
-
-  static User? get currentFirebaseUser => _auth.currentUser;
 
   // ─── Hospitals ───────────────────────────────────────────────────────────
 
@@ -85,7 +33,6 @@ class AuthService {
     required String city,
     required String phone,
   }) async {
-    // Check if already registered
     final existing = await _db
         .collection('hospitals')
         .where('licenseNo', isEqualTo: licenseNo.toUpperCase())
@@ -100,7 +47,7 @@ class AuthService {
       name: name,
       licenseNo: licenseNo.toUpperCase(),
       city: city,
-      phone: phone,
+      phone: normalizePhone(phone),
       registeredAt: DateTime.now(),
     );
     await _db.collection('hospitals').doc(id).set(hospital.toJson());
@@ -110,7 +57,7 @@ class AuthService {
   static Future<HospitalProfile?> getHospitalByPhone(String phone) async {
     final snap = await _db
         .collection('hospitals')
-        .where('phone', isEqualTo: phone.trim())
+        .where('phone', isEqualTo: normalizePhone(phone))
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
@@ -118,139 +65,175 @@ class AuthService {
   }
 
   static Future<List<HospitalProfile>> getHospitals() async {
-    final snap = await _db.collection('hospitals').get();
-    return snap.docs.map((d) => HospitalProfile.fromJson(d.data())).toList();
+    try {
+      final snap = await _db.collection('hospitals').get();
+      return snap.docs.map((d) => HospitalProfile.fromJson(d.data())).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   // ─── Doctors ─────────────────────────────────────────────────────────────
 
-  static Future<DoctorProfile> registerDoctor({
-    required String uid,
+  /// Register a new doctor. Returns error string on failure, null on success.
+  static Future<String?> registerDoctor({
     required String name,
     required String phone,
+    required String pin,
     required String hospitalId,
     required String hospitalName,
     required String licenseNo,
     String role = 'doctor',
   }) async {
-    final existing = await _db.collection('doctors').doc(uid).get();
-    if (existing.exists) return DoctorProfile.fromJson(existing.data()!);
+    final normPhone = normalizePhone(phone);
+    try {
+      final existing = await _db.collection('doctors').doc(normPhone).get();
+      if (existing.exists) return 'Phone already registered as a doctor.';
 
-    final doctor = DoctorProfile(
-      id: uid,
-      name: name,
-      phone: phone,
-      hospitalId: hospitalId,
-      hospitalName: hospitalName,
-      licenseNo: licenseNo,
-      role: role,
-      registeredAt: DateTime.now(),
-    );
-    await _db.collection('doctors').doc(uid).set(doctor.toJson());
-    await _saveSession(_doctorSessionKey, uid);
-    return doctor;
+      final doctor = DoctorProfile(
+        id: normPhone,
+        name: name,
+        phone: normPhone,
+        hospitalId: hospitalId,
+        hospitalName: hospitalName,
+        licenseNo: licenseNo,
+        role: role,
+        pinHash: hashPin(pin),
+        registeredAt: DateTime.now(),
+      );
+      await _db.collection('doctors').doc(normPhone).set(doctor.toJson());
+      await _saveSession(_doctorSessionKey, normPhone);
+      return null; // success
+    } catch (e) {
+      return 'Registration failed: ${e.toString()}';
+    }
   }
 
-  static Future<DoctorProfile?> getDoctorByUid(String uid) async {
-    final snap = await _db.collection('doctors').doc(uid).get();
-    if (!snap.exists) return null;
-    return DoctorProfile.fromJson(snap.data()!);
+  /// Login doctor with phone + PIN. Returns error string or null on success.
+  static Future<({DoctorProfile? doctor, String? error})> loginDoctorWithPin({
+    required String phone,
+    required String pin,
+  }) async {
+    final normPhone = normalizePhone(phone);
+    try {
+      final snap = await _db.collection('doctors').doc(normPhone).get();
+      if (!snap.exists) {
+        return (doctor: null, error: 'Phone not registered as a doctor.');
+      }
+      final doctor = DoctorProfile.fromJson(snap.data()!);
+      if (doctor.pinHash != hashPin(pin)) {
+        return (doctor: null, error: 'Incorrect PIN. Please try again.');
+      }
+      await _saveSession(_doctorSessionKey, normPhone);
+      return (doctor: doctor, error: null);
+    } catch (e) {
+      return (doctor: null, error: 'Login failed. Check your connection.');
+    }
   }
 
   static Future<DoctorProfile?> getDoctorByPhone(String phone) async {
-    final snap = await _db
-        .collection('doctors')
-        .where('phone', isEqualTo: phone.trim())
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return DoctorProfile.fromJson(snap.docs.first.data());
-  }
-
-  static Future<void> loginDoctor(DoctorProfile doctor) async {
-    await _saveSession(_doctorSessionKey, doctor.id);
+    final normPhone = normalizePhone(phone);
+    try {
+      final snap = await _db.collection('doctors').doc(normPhone).get();
+      if (!snap.exists) return null;
+      return DoctorProfile.fromJson(snap.data()!);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<DoctorProfile?> getCurrentDoctor() async {
-    // First try Firebase Auth UID
-    final uid = _auth.currentUser?.uid;
-    if (uid != null) {
-      final doc = await getDoctorByUid(uid);
-      if (doc != null) return doc;
-    }
-    // Fallback to saved session
-    final savedId = await _getSession(_doctorSessionKey);
-    if (savedId == null) return null;
-    return getDoctorByUid(savedId);
+    final savedPhone = await _getSession(_doctorSessionKey);
+    if (savedPhone == null) return null;
+    return getDoctorByPhone(savedPhone);
   }
 
   static Future<void> logoutDoctor() async {
-    await _auth.signOut();
     await _clearSession(_doctorSessionKey);
   }
 
   // ─── Patients ─────────────────────────────────────────────────────────────
 
-  static Future<PatientProfile> registerPatient({
-    required String uid,
+  /// Register a new patient. Returns error string on failure, null on success.
+  static Future<({PatientProfile? patient, String? error})> registerPatient({
     required String name,
     required String phone,
+    required String pin,
     required String dob,
   }) async {
-    final existing = await _db.collection('patients').doc(uid).get();
-    if (existing.exists) return PatientProfile.fromJson(existing.data()!);
+    final normPhone = normalizePhone(phone);
+    try {
+      final existing = await _db.collection('patients').doc(normPhone).get();
+      if (existing.exists) {
+        return (patient: null, error: 'Phone already registered. Please login.');
+      }
 
-    // Generate patient MR number
-    final countSnap = await _db.collection('patients').count().get();
-    final serial = ((countSnap.count ?? 0) + 1).toString().padLeft(4, '0');
-    final patientId = 'MR-${DateTime.now().year}-$serial';
+      // Generate patient MR number
+      final countSnap = await _db.collection('patients').count().get();
+      final serial = ((countSnap.count ?? 0) + 1).toString().padLeft(4, '0');
+      final patientId = 'MR-${DateTime.now().year}-$serial';
 
-    final patient = PatientProfile(
-      id: uid,
-      patientId: patientId,
-      name: name,
-      phone: phone,
-      dob: dob,
-      registeredAt: DateTime.now(),
-    );
-    await _db.collection('patients').doc(uid).set(patient.toJson());
-    await _saveSession(_patientSessionKey, uid);
-    return patient;
+      final patient = PatientProfile(
+        id: normPhone,
+        patientId: patientId,
+        name: name,
+        phone: normPhone,
+        dob: dob,
+        pinHash: hashPin(pin),
+        registeredAt: DateTime.now(),
+      );
+      await _db.collection('patients').doc(normPhone).set(patient.toJson());
+      await _saveSession(_patientSessionKey, normPhone);
+      return (patient: patient, error: null);
+    } catch (e) {
+      return (patient: null, error: 'Registration failed: ${e.toString()}');
+    }
   }
 
-  static Future<PatientProfile?> getPatientByUid(String uid) async {
-    final snap = await _db.collection('patients').doc(uid).get();
-    if (!snap.exists) return null;
-    return PatientProfile.fromJson(snap.data()!);
+  /// Login patient with phone + PIN.
+  static Future<({PatientProfile? patient, String? error})> loginPatientWithPin({
+    required String phone,
+    required String pin,
+  }) async {
+    final normPhone = normalizePhone(phone);
+    try {
+      final snap = await _db.collection('patients').doc(normPhone).get();
+      if (!snap.exists) {
+        return (patient: null, error: 'Phone not registered. Please register first.');
+      }
+      final patient = PatientProfile.fromJson(snap.data()!);
+      if (patient.pinHash != hashPin(pin)) {
+        return (patient: null, error: 'Incorrect PIN. Please try again.');
+      }
+      await _saveSession(_patientSessionKey, normPhone);
+      return (patient: patient, error: null);
+    } catch (e) {
+      return (patient: null, error: 'Login failed. Check your connection.');
+    }
   }
 
   static Future<PatientProfile?> getPatientByPhone(String phone) async {
-    final snap = await _db
-        .collection('patients')
-        .where('phone', isEqualTo: phone.trim())
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return PatientProfile.fromJson(snap.docs.first.data());
-  }
-
-  static Future<void> loginPatient(PatientProfile patient) async {
-    await _saveSession(_patientSessionKey, patient.id);
+    final normPhone = normalizePhone(phone);
+    try {
+      final snap = await _db.collection('patients').doc(normPhone).get();
+      if (!snap.exists) return null;
+      return PatientProfile.fromJson(snap.data()!);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<PatientProfile?> getCurrentPatient() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid != null) {
-      final p = await getPatientByUid(uid);
-      if (p != null) return p;
-    }
-    final savedId = await _getSession(_patientSessionKey);
-    if (savedId == null) return null;
-    return getPatientByUid(savedId);
+    final savedPhone = await _getSession(_patientSessionKey);
+    if (savedPhone == null) return null;
+    return getPatientByPhone(savedPhone);
+  }
+
+  static Future<String?> getCurrentPatientPhone() async {
+    return _getSession(_patientSessionKey);
   }
 
   static Future<void> logoutPatient() async {
-    await _auth.signOut();
     await _clearSession(_patientSessionKey);
   }
 

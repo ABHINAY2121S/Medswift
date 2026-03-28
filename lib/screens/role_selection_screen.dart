@@ -156,8 +156,10 @@ class _RoleCard extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(title,
-                    style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.dark)),
+                Flexible(
+                  child: Text(title,
+                      style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.dark)),
+                ),
                 if (badge != null) ...[
                   const SizedBox(width: 8),
                   Container(

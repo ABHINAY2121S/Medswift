@@ -1,9 +1,13 @@
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
+import '../../models/auth_models.dart';
 import '../../services/transfer_service.dart';
+import '../../services/auth_service.dart';
 import 'qr_display_screen.dart';
 
 class CreateTransferScreen extends StatefulWidget {
@@ -19,6 +23,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   // Controllers
   final _nameCtrl = TextEditingController();
   final _ageCtrl = TextEditingController();
+  final _patientPhoneCtrl = TextEditingController();
   final _diagnosisCtrl = TextEditingController();
   final _allergiesCtrl = TextEditingController();
   final _medsCtrl = TextEditingController();
@@ -28,9 +33,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   final _spo2Ctrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
   final _summaryCtrl = TextEditingController();
-  final _sendingHospitalCtrl = TextEditingController(text: 'City General Hospital');
   final _receivingHospitalCtrl = TextEditingController();
-  final _doctorCtrl = TextEditingController(text: 'Dr. Sarah Chen');
 
   String _gender = 'Male';
   String _riskLevel = 'moderate';
@@ -38,6 +41,13 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   List<String> _conflicts = [];
   int _summaryWords = 0;
   bool _submitting = false;
+
+  // Doctor info (auto-filled)
+  DoctorProfile? _doctor;
+
+  // Attachments
+  final List<TransferAttachment> _attachments = [];
+  bool _pickingFile = false;
 
   @override
   void initState() {
@@ -48,6 +58,12 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
     _pulseCtrl.addListener(_suggestRisk);
     _diagnosisCtrl.addListener(_suggestRisk);
     _summaryCtrl.addListener(_updateWordCount);
+    _loadDoctor();
+  }
+
+  Future<void> _loadDoctor() async {
+    final doc = await AuthService.getCurrentDoctor();
+    if (mounted) setState(() => _doctor = doc);
   }
 
   void _checkConflicts() {
@@ -58,11 +74,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   void _suggestRisk() {
     final v = Vitals(bp: _bpCtrl.text, pulse: _pulseCtrl.text, temp: _tempCtrl.text);
     final r = TransferService.suggestRisk(v, _diagnosisCtrl.text);
-    setState(() {
-      _suggestedRisk = r;
-      // Auto-select suggested risk if user hasn't manually changed
-      _riskLevel = r;
-    });
+    setState(() { _suggestedRisk = r; _riskLevel = r; });
   }
 
   void _updateWordCount() {
@@ -72,17 +84,68 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _ageCtrl, _diagnosisCtrl, _allergiesCtrl, _medsCtrl,
-        _bpCtrl, _pulseCtrl, _tempCtrl, _spo2Ctrl, _reasonCtrl, _summaryCtrl,
-        _sendingHospitalCtrl, _receivingHospitalCtrl, _doctorCtrl]) {
-      c.dispose();
-    }
+    for (final c in [
+      _nameCtrl, _ageCtrl, _patientPhoneCtrl, _diagnosisCtrl, _allergiesCtrl,
+      _medsCtrl, _bpCtrl, _pulseCtrl, _tempCtrl, _spo2Ctrl, _reasonCtrl,
+      _summaryCtrl, _receivingHospitalCtrl
+    ]) { c.dispose(); }
     super.dispose();
   }
 
+  // ── File picker ───────────────────────────────────────────────────────────
+  Future<void> _pickFile() async {
+    setState(() => _pickingFile = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.any,
+        withData: true,
+      );
+      if (result != null) {
+        for (final file in result.files) {
+          if (file.bytes == null) continue;
+          final sizeMB = file.bytes!.length / (1024 * 1024);
+          if (sizeMB > 10) {
+            _snack('${file.name} exceeds 10MB limit', err: true);
+            continue;
+          }
+          final base64Data = base64Encode(file.bytes!);
+          final mime = _mimeFromExt(file.extension ?? '');
+          setState(() {
+            _attachments.add(TransferAttachment(
+              fileName: file.name,
+              base64Data: base64Data,
+              mimeType: mime,
+            ));
+          });
+        }
+      }
+    } catch (e) {
+      _snack('Could not pick file: $e', err: true);
+    } finally {
+      if (mounted) setState(() => _pickingFile = false);
+    }
+  }
+
+  String _mimeFromExt(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'jpg': case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'pdf': return 'application/pdf';
+      case 'doc': case 'docx': return 'application/msword';
+      default: return 'application/octet-stream';
+    }
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
+
+    final doctorName = _doctor?.name ?? 'Doctor';
+    final hospitalName = _doctor?.hospitalName ?? 'Hospital';
+    final rawPhone = _patientPhoneCtrl.text.trim();
+    final normPhone = rawPhone.isEmpty ? '' : AuthService.normalizePhone(rawPhone);
 
     final transfer = PatientTransfer(
       id: TransferService.generateId(),
@@ -90,6 +153,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
       patientAge: int.tryParse(_ageCtrl.text) ?? 0,
       patientGender: _gender,
       patientId: TransferService.generatePatientId(),
+      patientPhone: normPhone,
       diagnosis: _diagnosisCtrl.text.trim(),
       allergies: _allergiesCtrl.text.trim(),
       medications: _medsCtrl.text.trim(),
@@ -102,14 +166,15 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
         spo2: _spo2Ctrl.text.trim(),
       ),
       riskLevel: _riskLevel,
-      sendingHospital: _sendingHospitalCtrl.text.trim(),
-      sendingDoctor: _doctorCtrl.text.trim(),
+      sendingHospital: hospitalName,
+      sendingDoctor: doctorName,
       receivingHospital: _receivingHospitalCtrl.text.trim(),
       createdAt: DateTime.now(),
+      attachments: _attachments,
       accessLogs: [
         AccessLog(
-          doctorName: _doctorCtrl.text.trim(),
-          hospital: _sendingHospitalCtrl.text.trim(),
+          doctorName: doctorName,
+          hospital: hospitalName,
           timestamp: DateTime.now(),
           action: 'created',
         ),
@@ -123,6 +188,16 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
       Navigator.pushReplacement(context,
           MaterialPageRoute(builder: (_) => QrDisplayScreen(transfer: transfer)));
     }
+  }
+
+  void _snack(String msg, {bool err = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: GoogleFonts.dmSans()),
+      backgroundColor: err ? AppColors.danger : AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   @override
@@ -145,6 +220,23 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Doctor info banner
+            if (_doctor != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                    color: AppColors.blueLight,
+                    borderRadius: BorderRadius.circular(14)),
+                child: Row(children: [
+                  const Icon(Icons.medical_services_rounded, color: AppColors.primary, size: 16),
+                  const SizedBox(width: 8),
+                  Text('${_doctor!.name} • ${_doctor!.hospitalName}',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                ]),
+              ).animate().fadeIn(),
+
             // Conflict Warning Banner
             if (_conflicts.isNotEmpty) ...[
               Container(
@@ -161,7 +253,8 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                       const SizedBox(width: 8),
                       Text('Drug-Allergy Conflict Detected',
                           style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700, color: AppColors.critical, fontSize: 13)),
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.critical, fontSize: 13)),
                     ]),
                     const SizedBox(height: 6),
                     ...(_conflicts.map((c) => Padding(
@@ -185,9 +278,44 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                 const SizedBox(width: 12),
                 Expanded(child: _genderPicker()),
               ]),
-              _field('Sending Hospital', _sendingHospitalCtrl),
+              // ★ Patient phone field — KEY for sync
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Patient's Phone No.",
+                      style: GoogleFonts.dmSans(
+                          fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _patientPhoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark),
+                    decoration: InputDecoration(
+                      hintText: '9876543210 (patient sees this in their app)',
+                      hintStyle: GoogleFonts.dmSans(color: AppColors.muted, fontSize: 12),
+                      prefixText: '+91 ',
+                      prefixStyle: GoogleFonts.dmSans(
+                          color: AppColors.primary, fontWeight: FontWeight.w600),
+                      prefixIcon: const Icon(Icons.phone_rounded, color: AppColors.primary, size: 18),
+                      filled: true,
+                      fillColor: AppColors.greenLight,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.accent.withOpacity(0.3))),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.accent.withOpacity(0.3))),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Patient registered with this number will see this transfer',
+                      style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.accent)),
+                ],
+              ),
               _field('Receiving Hospital (optional)', _receivingHospitalCtrl),
-              _field('Doctor Name', _doctorCtrl),
             ]),
 
             const SizedBox(height: 20),
@@ -200,7 +328,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                   fillColor: AppColors.redLight,
                   textColor: AppColors.critical,
                   hint: 'e.g. Penicillin, Sulfa drugs',
-                  validator: (v) => v!.isEmpty ? 'Allergies are required (enter None if none)' : null),
+                  validator: (v) => v!.isEmpty ? 'Allergies required (enter None if none)' : null),
               _field('Current Medications *', _medsCtrl,
                   maxLines: 3,
                   validator: (v) => v!.isEmpty ? 'Required' : null),
@@ -229,27 +357,25 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Clinical Summary',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted,
-                              fontWeight: FontWeight.w500)),
-                      Text('$_summaryWords / 200 words',
-                          style: GoogleFonts.dmSans(fontSize: 11, color:
-                          _summaryWords > 200 ? AppColors.critical : AppColors.muted)),
-                    ],
-                  ),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Text('Clinical Summary',
+                        style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted,
+                            fontWeight: FontWeight.w500)),
+                    Text('$_summaryWords / 200 words',
+                        style: GoogleFonts.dmSans(fontSize: 11,
+                            color: _summaryWords > 200 ? AppColors.critical : AppColors.muted)),
+                  ]),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _summaryCtrl,
                     maxLines: 4,
                     decoration: InputDecoration(
                       hintText: 'Brief clinical summary…',
-                      hintStyle: GoogleFonts.dmSans(color: AppColors.muted.withOpacity(0.6), fontSize: 13),
-                      filled: true,
-                      fillColor: AppColors.bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      hintStyle: GoogleFonts.dmSans(
+                          color: AppColors.muted.withOpacity(0.6), fontSize: 13),
+                      filled: true, fillColor: AppColors.bg,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.all(12),
                     ),
                     validator: (v) => _summaryWords > 200 ? 'Max 200 words' : null,
@@ -301,8 +427,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                             '${AppTheme.riskEmoji(r)} ${r[0].toUpperCase()}${r.substring(1)}',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 13, fontWeight: FontWeight.w600,
                                 color: selected ? color : AppColors.muted),
                           ),
                         ),
@@ -313,15 +438,80 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
               ),
             ]),
 
+            // ★ File Attachments Section
+            const SizedBox(height: 20),
+            _SectionHeader('Attachments (optional)'),
+            _buildCard([
+              // Existing attachments
+              if (_attachments.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: _attachments.asMap().entries.map((e) {
+                    final idx = e.key;
+                    final att = e.value;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                          color: AppColors.blueLight,
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(
+                          att.isImage ? Icons.image_rounded : Icons.attach_file_rounded,
+                          size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(att.fileName,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 11, color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        Text('(${att.sizeLabel})',
+                            style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted)),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => setState(() => _attachments.removeAt(idx)),
+                          child: const Icon(Icons.close_rounded,
+                              size: 14, color: AppColors.primary),
+                        ),
+                      ]),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // Add file button
+              OutlinedButton.icon(
+                onPressed: _pickingFile ? null : _pickFile,
+                icon: _pickingFile
+                    ? const SizedBox(
+                        width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                    : const Icon(Icons.attach_file_rounded, size: 18),
+                label: Text(_pickingFile ? 'Picking files…' : 'Attach File (gallery / documents)',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text('Supports images, PDFs, documents up to 10MB each',
+                  style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted)),
+            ]),
+
             const SizedBox(height: 28),
             ElevatedButton.icon(
               onPressed: _submitting ? null : _submit,
               icon: _submitting
-                  ? const SizedBox(width: 18, height: 18,
+                  ? const SizedBox(
+                      width: 18, height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.qr_code_rounded, color: Colors.white),
               label: Text('Generate Transfer QR',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
+                  style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -365,29 +555,40 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
           keyboardType: type,
           maxLines: maxLines,
-          style: GoogleFonts.dmSans(fontSize: 14, color: textColor ?? AppColors.dark, fontWeight: textColor != null ? FontWeight.w600 : FontWeight.normal),
+          style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: textColor ?? AppColors.dark,
+              fontWeight: textColor != null ? FontWeight.w600 : FontWeight.normal),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.dmSans(color: AppColors.muted.withOpacity(0.6), fontSize: 13),
+            hintStyle: GoogleFonts.dmSans(
+                color: AppColors.muted.withOpacity(0.6), fontSize: 13),
             filled: true,
             fillColor: fillColor ?? AppColors.bg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: filled ? BorderSide(color: AppColors.critical.withOpacity(0.4)) : BorderSide.none,
+              borderSide: filled
+                  ? BorderSide(color: AppColors.critical.withOpacity(0.4))
+                  : BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: filled ? BorderSide(color: AppColors.critical.withOpacity(0.4)) : BorderSide.none,
+              borderSide: filled
+                  ? BorderSide(color: AppColors.critical.withOpacity(0.4))
+                  : BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: filled ? AppColors.critical : AppColors.primary, width: 1.5),
+              borderSide: BorderSide(
+                  color: filled ? AppColors.critical : AppColors.primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -405,14 +606,16 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Gender', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+        Text('Gender',
+            style: GoogleFonts.dmSans(
+                fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           value: _gender,
           decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.bg,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            filled: true, fillColor: AppColors.bg,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
           style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark),

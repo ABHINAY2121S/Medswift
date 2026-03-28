@@ -2,13 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
+import '../../services/transfer_service.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/qr_modal.dart';
 import 'transfer_detail_screen.dart';
 
-class TransferTimelineScreen extends StatelessWidget {
+/// Medical Journey screen — fetches its OWN data from Firestore so it always
+/// shows the latest transfers regardless of what the dashboard had loaded.
+class TransferTimelineScreen extends StatefulWidget {
+  /// Optional pre-loaded list (used as initial data while fetching)
   final List<PatientTransfer> transfers;
-  const TransferTimelineScreen({super.key, required this.transfers});
+  const TransferTimelineScreen({super.key, this.transfers = const []});
+
+  @override
+  State<TransferTimelineScreen> createState() => _TransferTimelineScreenState();
+}
+
+class _TransferTimelineScreenState extends State<TransferTimelineScreen> {
+  List<PatientTransfer> _transfers = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show pre-loaded data instantly, then refresh from Firestore
+    _transfers = List.from(widget.transfers);
+    if (_transfers.isNotEmpty) _loading = false;
+    _load();
+  }
+
+  Future<void> _load() async {
+    final phone = await AuthService.getCurrentPatientPhone() ?? '';
+    if (phone.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final data = await TransferService.getPatientTransfers(phone);
+    if (mounted) {
+      setState(() {
+        _transfers = data;
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,50 +63,77 @@ class TransferTimelineScreen extends StatelessWidget {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Refresh button
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+            onPressed: () {
+              setState(() => _loading = true);
+              _load();
+            },
+          ),
+        ],
       ),
-      body: transfers.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.timeline_rounded, size: 48, color: AppColors.muted),
-                  const SizedBox(height: 12),
-                  Text('No transfer history', style: GoogleFonts.dmSans(color: AppColors.muted)),
-                ],
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-              children: [
-                // Summary badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.blueLight,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.info_rounded, color: AppColors.primary, size: 16),
-                    const SizedBox(width: 8),
-                    Text('${transfers.length} transfer${transfers.length != 1 ? 's' : ''} recorded in your history',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500)),
-                  ]),
-                ).animate().fadeIn(),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.accent,
+              child: _transfers.isEmpty
+                  ? ListView(
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.timeline_rounded, size: 56, color: AppColors.muted),
+                              const SizedBox(height: 12),
+                              Text('No transfer history yet',
+                                  style: GoogleFonts.dmSans(
+                                      color: AppColors.muted, fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 6),
+                              Text('Pull down to refresh',
+                                  style: GoogleFonts.dmSans(color: AppColors.muted, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                      children: [
+                        // Summary badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.blueLight,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.info_rounded, color: AppColors.primary, size: 16),
+                            const SizedBox(width: 8),
+                            Text('${_transfers.length} transfer${_transfers.length != 1 ? 's' : ''} recorded in your history',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                          ]),
+                        ).animate().fadeIn(),
 
-                // Timeline entries
-                ...transfers.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final t = entry.value;
-                  final isLast = i == transfers.length - 1;
-                  return _TimelineEntry(
-                    transfer: t,
-                    isLast: isLast,
-                    index: i,
-                  );
-                }),
-              ],
+                        // Timeline entries
+                        ..._transfers.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final t = entry.value;
+                          final isLast = i == _transfers.length - 1;
+                          return _TimelineEntry(
+                            transfer: t,
+                            isLast: isLast,
+                            index: i,
+                          );
+                        }),
+                      ],
+                    ),
             ),
     );
   }
@@ -175,10 +241,11 @@ class _TimelineEntry extends StatelessWidget {
                     Row(children: [
                       const Icon(Icons.medical_services_rounded, size: 12, color: AppColors.muted),
                       const SizedBox(width: 4),
-                      Text(transfer.sendingDoctor,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500)),
-                      const Spacer(),
+                      Expanded(
+                        child: Text(transfer.sendingDoctor,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                      ),
                       if (transfer.isReviewed)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -188,6 +255,27 @@ class _TimelineEntry extends StatelessWidget {
                           child: Text('Reviewed',
                               style: GoogleFonts.dmSans(
                                   fontSize: 9, color: AppColors.accent, fontWeight: FontWeight.w700)),
+                        ),
+                      const SizedBox(width: 6),
+                        // ★ Inline QR on every timeline entry — tap to expand
+                        GestureDetector(
+                          onTap: () => QrModal.show(context, transfer),
+                          child: Container(
+                            width: 62, height: 62, // 56 size + 6 total padding prevents IntrinsicHeight crash
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: QrImageView(
+                              data: transfer.viewerUrl,
+                              version: QrVersions.auto,
+                              size: 56,
+                              backgroundColor: Colors.white,
+                              errorCorrectionLevel: QrErrorCorrectLevel.L,
+                            ),
+                          ),
                         ),
                     ]),
                   ],

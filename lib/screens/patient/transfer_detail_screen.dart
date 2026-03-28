@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
+import '../../widgets/qr_modal.dart';
 
 class TransferDetailScreen extends StatelessWidget {
   final PatientTransfer transfer;
@@ -27,6 +29,20 @@ class TransferDetailScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // ★ QR button in app bar
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: 'Show QR Code',
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppColors.blueLight, borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.qr_code_rounded, color: AppColors.primary, size: 20),
+              ),
+              onPressed: () => QrModal.show(context, transfer),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Chip(
@@ -40,8 +56,16 @@ class TransferDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+      // ★ FAB for QR too
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => QrModal.show(context, transfer),
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.qr_code_rounded, color: Colors.white),
+        label: Text('Show QR',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white)),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
         children: [
           // Header card
           Container(
@@ -54,30 +78,24 @@ class TransferDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [BoxShadow(color: riskColor.withOpacity(0.3), blurRadius: 16)],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(transfer.sendingHospital,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(transfer.riskLevel.toUpperCase(),
-                          style: GoogleFonts.dmSans(
-                              fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-                    ),
-                  ],
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(transfer.sendingHospital,
+                    style: GoogleFonts.dmSans(
+                        fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text(transfer.riskLevel.toUpperCase(),
+                      style: GoogleFonts.dmSans(
+                          fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
-                const SizedBox(height: 8),
-                Text(date, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white70)),
-              ],
-            ),
+              ]),
+              const SizedBox(height: 8),
+              Text(date, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white70)),
+            ]),
           ).animate().fadeIn(),
 
           const SizedBox(height: 16),
@@ -103,7 +121,6 @@ class TransferDetailScreen extends StatelessWidget {
             ]),
           ),
 
-          // Transfer path
           if (transfer.receivingHospital.isNotEmpty)
             _DetailCard(
               title: 'Transfer Path',
@@ -139,7 +156,6 @@ class TransferDetailScreen extends StatelessWidget {
             ]),
           ),
 
-          // Vitals on transfer
           _DetailCard(
             title: 'Vitals at Transfer',
             child: Row(children: [
@@ -158,7 +174,8 @@ class TransferDetailScreen extends StatelessWidget {
           _DetailCard(
             title: 'Diagnosis',
             child: Text(transfer.diagnosis,
-                style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark, fontWeight: FontWeight.w500)),
+                style: GoogleFonts.dmSans(
+                    fontSize: 14, color: AppColors.dark, fontWeight: FontWeight.w500)),
           ),
 
           _DetailCard(
@@ -187,7 +204,6 @@ class TransferDetailScreen extends StatelessWidget {
                   style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark, height: 1.5)),
             ),
 
-          // Status badges
           _DetailCard(
             title: 'Transfer Status',
             child: Wrap(spacing: 8, runSpacing: 8, children: [
@@ -199,9 +215,65 @@ class TransferDetailScreen extends StatelessWidget {
             ]),
           ),
 
+          // ★ Attachments section
+          if (transfer.attachments.isNotEmpty)
+            _DetailCard(
+              title: 'Attached Files (${transfer.attachments.length})',
+              child: Column(
+                children: transfer.attachments.map((att) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border)),
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: AppColors.blueLight,
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Icon(
+                          att.isImage ? Icons.image_rounded : Icons.description_rounded,
+                          color: AppColors.primary, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(att.fileName,
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 13, fontWeight: FontWeight.w600,
+                                  color: AppColors.dark),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(att.sizeLabel,
+                              style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted)),
+                        ],
+                      )),
+                      // Show image preview for images
+                      if (att.isImage)
+                        GestureDetector(
+                          onTap: () => _showImagePreview(context, att),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: AppColors.greenLight,
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Text('View',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 11, color: AppColors.accent,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                    ]),
+                  );
+                }).toList(),
+              ),
+            ),
+
           const SizedBox(height: 20),
 
-          // Privacy note
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -218,9 +290,32 @@ class TransferDetailScreen extends StatelessWidget {
               ),
             ]),
           ),
-
-          const SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+
+  void _showImagePreview(BuildContext context, TransferAttachment att) {
+    final imageBytes = base64Decode(att.base64Data);
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text(att.fileName,
+                  style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+              IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+            ]),
+          ),
+          InteractiveViewer(child: Image.memory(imageBytes, fit: BoxFit.contain)),
+          const SizedBox(height: 8),
+        ]),
       ),
     );
   }
@@ -243,16 +338,14 @@ class _DetailCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title.toUpperCase(),
-              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700,
-                  color: AppColors.muted, letterSpacing: 1)),
-          const SizedBox(height: 8),
-          child,
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title.toUpperCase(),
+            style: GoogleFonts.dmSans(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: AppColors.muted, letterSpacing: 1)),
+        const SizedBox(height: 8),
+        child,
+      ]),
     );
   }
 }
@@ -261,40 +354,38 @@ class _HospitalBox extends StatelessWidget {
   final String name;
   final String label;
   const _HospitalBox(this.name, this.label);
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
-      child: Column(children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 9, color: AppColors.muted)),
-        const SizedBox(height: 4),
-        Text(name, textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.dark)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) =>
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+        child: Column(children: [
+          Text(label, style: GoogleFonts.dmSans(fontSize: 9, color: AppColors.muted)),
+          const SizedBox(height: 4),
+          Text(name, textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.dark)),
+        ]),
+      );
 }
 
 class _VBox extends StatelessWidget {
   final String value;
   final String label;
   const _VBox(this.value, this.label);
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
-      child: Column(children: [
-        Text(value.isEmpty ? '—' : value,
-            style: GoogleFonts.spaceMono(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark)),
-        const SizedBox(height: 2),
-        Text(label, style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) =>
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+        child: Column(children: [
+          Text(value.isEmpty ? '—' : value,
+              style: GoogleFonts.spaceMono(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark)),
+          const SizedBox(height: 2),
+          Text(label, style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted)),
+        ]),
+      );
 }
 
 class _Badge extends StatelessWidget {
@@ -302,14 +393,12 @@ class _Badge extends StatelessWidget {
   final Color color;
   final Color bg;
   const _Badge(this.label, this.color, this.bg);
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(label,
-          style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-    );
-  }
+  Widget build(BuildContext context) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(label,
+            style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      );
 }

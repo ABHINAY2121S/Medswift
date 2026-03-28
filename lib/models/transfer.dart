@@ -27,7 +27,7 @@ class AccessLog {
   final String doctorName;
   final String hospital;
   final DateTime timestamp;
-  final String action; // 'viewed', 'reviewed', 'flagged', 'noted'
+  final String action; // 'viewed', 'reviewed', 'flagged', 'noted', 'created'
 
   AccessLog({
     required this.doctorName,
@@ -51,6 +51,41 @@ class AccessLog {
   );
 }
 
+class TransferAttachment {
+  final String fileName;
+  final String base64Data;
+  final String mimeType;
+
+  TransferAttachment({
+    required this.fileName,
+    required this.base64Data,
+    required this.mimeType,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'fileName': fileName,
+    'base64Data': base64Data,
+    'mimeType': mimeType,
+  };
+
+  factory TransferAttachment.fromJson(Map<String, dynamic> j) => TransferAttachment(
+    fileName: j['fileName'] ?? '',
+    base64Data: j['base64Data'] ?? '',
+    mimeType: j['mimeType'] ?? 'application/octet-stream',
+  );
+
+  /// Returns approximate file size in human-readable form
+  String get sizeLabel {
+    final bytes = (base64Data.length * 3 / 4).round();
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  bool get isImage =>
+      mimeType.startsWith('image/');
+}
+
 class PatientTransfer {
   final String id;
   // Patient info
@@ -58,7 +93,7 @@ class PatientTransfer {
   final int patientAge;
   final String patientGender;
   final String patientId;
-  final String patientPhone;
+  final String patientPhone; // normalized +91XXXXXXXXXX — used to sync to patient dashboard
   // Clinical
   final String diagnosis;
   final String allergies;
@@ -79,6 +114,8 @@ class PatientTransfer {
   bool isFlagged;
   List<AccessLog> accessLogs;
   String status; // 'pending', 'en_route', 'received', 'completed'
+  // Attachments
+  List<TransferAttachment> attachments;
 
   PatientTransfer({
     required this.id,
@@ -103,7 +140,9 @@ class PatientTransfer {
     this.isFlagged = false,
     List<AccessLog>? accessLogs,
     this.status = 'pending',
-  }) : accessLogs = accessLogs ?? [];
+    List<TransferAttachment>? attachments,
+  })  : accessLogs = accessLogs ?? [],
+        attachments = attachments ?? [];
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -128,6 +167,7 @@ class PatientTransfer {
     'isFlagged': isFlagged,
     'accessLogs': accessLogs.map((l) => l.toJson()).toList(),
     'status': status,
+    'attachments': attachments.map((a) => a.toJson()).toList(),
   };
 
   factory PatientTransfer.fromJson(Map<String, dynamic> j) => PatientTransfer(
@@ -155,9 +195,40 @@ class PatientTransfer {
         .map((l) => AccessLog.fromJson(l))
         .toList(),
     status: j['status'] ?? 'pending',
+    attachments: (j['attachments'] as List<dynamic>? ?? [])
+        .map((a) => TransferAttachment.fromJson(a))
+        .toList(),
   );
 
-  String toBase64() => base64Encode(utf8.encode(jsonEncode(toJson())));
+  /// Minimal JSON for QR — excludes large fields (attachments, access logs, clinical summary).
+  /// QR codes have a ~4KB limit so we only include critical clinical data.
+  Map<String, dynamic> toJsonMinimal() => {
+    'id': id,
+    'patientName': patientName,
+    'patientAge': patientAge,
+    'patientGender': patientGender,
+    'patientId': patientId,
+    'patientPhone': patientPhone,
+    'diagnosis': diagnosis,
+    'allergies': allergies,
+    'medications': medications,
+    // Truncate long fields to keep QR scannable
+    'transferReason': transferReason.length > 200
+        ? '${transferReason.substring(0, 200)}…'
+        : transferReason,
+    'vitals': vitals.toJson(),
+    'riskLevel': riskLevel,
+    'sendingHospital': sendingHospital,
+    'sendingDoctor': sendingDoctor,
+    'receivingHospital': receivingHospital,
+    'createdAt': createdAt.toIso8601String(),
+    'status': status,
+    'isReviewed': isReviewed,
+    'isFlagged': isFlagged,
+  };
+
+  /// Base64-encode the MINIMAL payload (no attachments) — safe for QR codes.
+  String toBase64() => base64Encode(utf8.encode(jsonEncode(toJsonMinimal())));
 
   static PatientTransfer? fromBase64(String encoded) {
     try {

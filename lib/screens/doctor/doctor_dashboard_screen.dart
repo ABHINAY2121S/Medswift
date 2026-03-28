@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../models/auth_models.dart';
 import '../../services/transfer_service.dart';
 import '../../services/auth_service.dart';
 import '../../screens/role_selection_screen.dart';
+import '../../widgets/qr_modal.dart';
 import 'create_transfer_screen.dart';
 import 'scan_qr_screen.dart';
 import 'transfer_history_screen.dart';
@@ -297,7 +299,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       Text(t.patientName,
                           style: GoogleFonts.dmSans(
                               fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.dark)),
-                      Text('${t.diagnosis.length > 25 ? t.diagnosis.substring(0, 25) + '…' : t.diagnosis} • $timeAgo',
+                      Text('${t.diagnosis.length > 25 ? t.diagnosis.substring(0, 25) + '\u2026' : t.diagnosis} • $timeAgo',
                           style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted)),
                     ],
                   ),
@@ -308,6 +310,26 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   child: Text(t.riskLevel.toUpperCase(),
                       style: GoogleFonts.dmSans(
                           fontSize: 10, fontWeight: FontWeight.w700, color: riskColor)),
+                ),
+                const SizedBox(width: 8),
+                // ★ Inline QR code — tap to expand
+                GestureDetector(
+                  onTap: () => QrModal.show(context, t),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: QrImageView(
+                      data: t.viewerUrl,
+                      version: QrVersions.auto,
+                      size: 72,
+                      backgroundColor: Colors.white,
+                      errorCorrectionLevel: QrErrorCorrectLevel.L,
+                    ),
+                  ),
                 ),
               ],
             ),

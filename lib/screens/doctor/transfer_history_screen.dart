@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../services/transfer_service.dart';
+import '../../widgets/qr_modal.dart';
 import 'review_screen.dart';
 import 'create_transfer_screen.dart';
 
@@ -212,7 +214,25 @@ class _TransferHistoryScreenState extends State<TransferHistoryScreen> {
                             fontSize: 10, fontWeight: FontWeight.w700, color: riskColor)),
                   ),
                   const SizedBox(height: 8),
-                  const Icon(Icons.chevron_right_rounded, color: Color(0xFFD1D5DB), size: 20),
+                  // ★ Inline QR code — tap to expand full modal
+                  GestureDetector(
+                    onTap: () => QrModal.show(context, t),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: QrImageView(
+                        data: t.viewerUrl,
+                        version: QrVersions.auto,
+                        size: 72,
+                        backgroundColor: Colors.white,
+                        errorCorrectionLevel: QrErrorCorrectLevel.L,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
