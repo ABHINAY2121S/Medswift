@@ -122,6 +122,9 @@ class PatientTransfer {
   // Real-time transfer tracking
   DateTime? dispatchTime;  // when ambulance departed
   int etaMinutes;          // estimated minutes to destination
+  // QR Access Control
+  String qrPin;            // 4-digit PIN (plain, stored in Firestore securely)
+  DateTime qrExpiresAt;    // QR link valid for 24h after generation
 
   PatientTransfer({
     required this.id,
@@ -151,9 +154,18 @@ class PatientTransfer {
     List<TransferAttachment>? attachments,
     this.dispatchTime,
     this.etaMinutes = 30,
+    String? qrPin,
+    DateTime? qrExpiresAt,
   })  : comorbidities = comorbidities ?? [],
         accessLogs = accessLogs ?? [],
-        attachments = attachments ?? [];
+        attachments = attachments ?? [],
+        qrPin = qrPin ?? _generatePin(),
+        qrExpiresAt = qrExpiresAt ?? DateTime.now().add(const Duration(hours: 24));
+
+  static String _generatePin() {
+    final rand = DateTime.now().millisecondsSinceEpoch % 10000;
+    return rand.toString().padLeft(4, '0');
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -183,6 +195,8 @@ class PatientTransfer {
     'attachments': attachments.map((a) => a.toJson()).toList(),
     'dispatchTime': dispatchTime?.toIso8601String(),
     'etaMinutes': etaMinutes,
+    'qrPin': qrPin,
+    'qrExpiresAt': qrExpiresAt.toIso8601String(),
   };
 
   factory PatientTransfer.fromJson(Map<String, dynamic> j) => PatientTransfer(
@@ -221,6 +235,10 @@ class PatientTransfer {
         ? DateTime.tryParse(j['dispatchTime'])
         : null,
     etaMinutes: j['etaMinutes'] ?? 30,
+    qrPin: j['qrPin'] ?? _generatePin(),
+    qrExpiresAt: j['qrExpiresAt'] != null
+        ? DateTime.tryParse(j['qrExpiresAt']) ?? DateTime.now().add(const Duration(hours: 24))
+        : DateTime.now().add(const Duration(hours: 24)),
   );
 
   /// Minimal JSON for QR — excludes large fields (attachments, access logs, clinical summary).
@@ -266,7 +284,9 @@ class PatientTransfer {
 
   String get viewerUrl {
     final encoded = toBase64();
-    return 'https://abhinay2121s.github.io/Medswift/viewer.html?data=$encoded';
+    final expMs = qrExpiresAt.millisecondsSinceEpoch;
+    // PIN is embedded as plain text — viewer.html hashes then compares on client side
+    return 'https://abhinay2121s.github.io/Medswift/viewer.html?data=$encoded&pin=$qrPin&exp=$expMs';
   }
 
   String get shortLink => 'medswift.app/t/$id';

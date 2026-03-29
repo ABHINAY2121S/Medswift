@@ -329,4 +329,17 @@ class TransferService {
 
   static String generatePatientId() =>
       'MR-${DateTime.now().year}-${_uuid.v4().substring(0, 4).toUpperCase()}';
+
+  /// Generates a fresh 4-digit PIN and resets the QR expiry to 24h from now.
+  /// Call this when the old QR has expired or the doctor wants to revoke access.
+  static Future<void> regenerateQrAccess(String transferId) async {
+    final rand = DateTime.now().millisecondsSinceEpoch % 10000;
+    final newPin = rand.toString().padLeft(4, '0');
+    final newExpiry = DateTime.now().add(const Duration(hours: 24));
+    await _db.collection('transfers').doc(transferId).update({
+      'qrPin': newPin,
+      'qrExpiresAt': newExpiry.toIso8601String(),
+    });
+  }
 }
+

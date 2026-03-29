@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -437,7 +438,17 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
               Row(children: [
                 Expanded(child: _field('Age *', _ageCtrl,
                     type: TextInputType.number,
-                    validator: (v) => v!.isEmpty ? 'Required' : null)),
+                    maxLength: 3,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      final age = int.tryParse(v);
+                      if (age == null) return 'Numbers only';
+                      if (age <= 0) return 'Invalid age';
+                      if (age > 150) return 'Cannot exceed 150';
+                      return null;
+                    })),
+
                 const SizedBox(width: 12),
                 Expanded(child: _genderPicker()),
               ]),
@@ -899,6 +910,8 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   Widget _field(String label, TextEditingController ctrl, {
     TextInputType type = TextInputType.text,
     int maxLines = 1,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
     String? hint,
     bool filled = false,
     Color? fillColor,
@@ -916,6 +929,8 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
           controller: ctrl,
           keyboardType: type,
           maxLines: maxLines,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
           style: GoogleFonts.dmSans(
               fontSize: 14,
               color: textColor ?? AppColors.dark,
