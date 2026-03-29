@@ -873,6 +873,37 @@ class _ReviewScreenState extends State<ReviewScreen> {
       child: child,
     );
   }
+
+  void _showImagePreview(BuildContext context, TransferAttachment att) {
+    final imageBytes = base64Decode(att.base64Data);
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(
+                child: Text(att.fileName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+              ),
+              IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+            ]),
+          ),
+          Flexible(
+            child: InteractiveViewer(
+              child: Image.memory(imageBytes, fit: BoxFit.contain)),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
 }
 
 class _InfoCard extends StatelessWidget {
@@ -926,37 +957,6 @@ class _VitalChip extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
           Text(label,
               style: GoogleFonts.dmSans(fontSize: 9, color: Colors.white60)),
-        ]),
-      ),
-    );
-  }
-
-  void _showImagePreview(BuildContext context, TransferAttachment att) {
-    final imageBytes = base64Decode(att.base64Data);
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Expanded(
-                child: Text(att.fileName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
-              ),
-              IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.white)),
-            ]),
-          ),
-          Flexible(
-            child: InteractiveViewer(
-              child: Image.memory(imageBytes, fit: BoxFit.contain)),
-          ),
-          const SizedBox(height: 8),
         ]),
       ),
     );
