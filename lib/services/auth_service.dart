@@ -84,6 +84,7 @@ class AuthService {
     required String hospitalName,
     required String licenseNo,
     String role = 'doctor',
+    String speciality = '',
   }) async {
     final normPhone = normalizePhone(phone);
     try {
@@ -99,6 +100,9 @@ class AuthService {
         licenseNo: licenseNo,
         role: role,
         pinHash: hashPin(pin),
+        speciality: speciality,
+        totalTransfers: 0,
+        completedTransfers: 0,
         registeredAt: DateTime.now(),
       );
       await _db.collection('doctors').doc(normPhone).set(doctor.toJson());
@@ -106,6 +110,33 @@ class AuthService {
       return null; // success
     } catch (e) {
       return 'Registration failed: ${e.toString()}';
+    }
+  }
+
+  /// Fetch all doctors from Firestore (for recommendation engine).
+  static Future<List<DoctorProfile>> getAllDoctors() async {
+    try {
+      final snap = await _db.collection('doctors').get();
+      return snap.docs.map((d) => DoctorProfile.fromJson(d.data())).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// App-tracked: atomically increment a doctor's transfer counters.
+  /// [completed] = true → also increments completedTransfers.
+  static Future<void> incrementDoctorStats(String doctorPhone, {bool completed = false}) async {
+    final normPhone = normalizePhone(doctorPhone);
+    try {
+      final updates = <String, dynamic>{
+        'totalTransfers': FieldValue.increment(1),
+      };
+      if (completed) {
+        updates['completedTransfers'] = FieldValue.increment(1);
+      }
+      await _db.collection('doctors').doc(normPhone).update(updates);
+    } catch (_) {
+      // Doctor doc may not exist yet — silently ignore
     }
   }
 

@@ -36,6 +36,22 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
   bool _regConfirmComplete = false;
   bool _showRegPin = false;
   bool _showRegConfirm = false;
+  String? _selectedSpeciality;
+
+  static const _specialities = [
+    'General Physician',
+    'Cardiologist',
+    'Neurologist',
+    'Pulmonologist',
+    'Nephrologist',
+    'Endocrinologist',
+    'Orthopedist',
+    'General Surgeon',
+    'Intensivist / Critical Care',
+    'Pediatrician',
+    'Oncologist',
+    'Psychiatrist',
+  ];
 
   HospitalProfile? _selectedHospital;
   List<HospitalProfile> _hospitals = [];
@@ -125,6 +141,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
       hospitalId: _selectedHospital?.id ?? 'SELF',
       hospitalName: _selectedHospital?.name ?? 'Independent Practice',
       licenseNo: _licenseCtrl.text.trim().toUpperCase(),
+      speciality: _selectedSpeciality ?? '',
     );
     if (!mounted) return;
     setState(() => _loading = false);
@@ -306,6 +323,35 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
                   )),
             ],
             onChanged: (h) => setState(() => _selectedHospital = h),
+          ),
+          const SizedBox(height: 10),
+
+          // Speciality dropdown
+          _FieldLabel('Speciality'),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String?>(
+            value: _selectedSpeciality,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.bg,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              prefixIcon: const Icon(Icons.medical_information_rounded, color: AppColors.primary, size: 18),
+            ),
+            hint: Text('Select Speciality', style: GoogleFonts.dmSans(color: AppColors.muted, fontSize: 13)),
+            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark),
+            items: [
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text('General / Not Specified', style: GoogleFonts.dmSans()),
+              ),
+              ..._specialities.map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s, style: GoogleFonts.dmSans()),
+                  )),
+            ],
+            onChanged: (s) => setState(() => _selectedSpeciality = s),
           ),
           const SizedBox(height: 16),
 

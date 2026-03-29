@@ -12,6 +12,8 @@ import 'transfer_timeline_screen.dart';
 import 'transfer_detail_screen.dart';
 import '../role_selection_screen.dart';
 import '../../widgets/emergency_card.dart';
+import '../../services/recommendation_service.dart';
+import '../../widgets/doctor_profile_card.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   const PatientDashboardScreen({super.key});
@@ -22,6 +24,7 @@ class PatientDashboardScreen extends StatefulWidget {
 
 class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   List<PatientTransfer> _transfers = [];
+  List<DoctorRecommendation> _recommendations = [];
   bool _loading = true;
   PatientProfile? _patient;
   PatientTransfer? _latest;
@@ -39,11 +42,15 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     // Load transfers by phone number (Firestore sync)
     final phone = patient?.phone ?? await AuthService.getCurrentPatientPhone() ?? '';
     final all = await TransferService.getPatientTransfers(phone);
+    // Load doctor recommendations based on latest transfer diagnosis
+    final diagnosis = all.isNotEmpty ? all.first.diagnosis : '';
+    final recs = await RecommendationService.getRecommendations(diagnosis);
     if (mounted) {
       setState(() {
         _patient = patient;
         _transfers = all;
         _latest = all.isNotEmpty ? all.first : null;
+        _recommendations = recs;
         _loading = false;
       });
     }
@@ -89,6 +96,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               if (_transfers.isNotEmpty)
                 SliverToBoxAdapter(child: _buildRecentTransfers(context)),
               SliverToBoxAdapter(child: _buildAllergiesCard()),
+              if (_recommendations.isNotEmpty)
+                SliverToBoxAdapter(child: _buildRecommendedDoctors(context)),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ],
@@ -345,7 +354,130 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
+  Widget _buildRecommendedDoctors(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF6366F1)),
+            const SizedBox(width: 6),
+            Text('RECOMMENDED DOCTORS',
+                style: GoogleFonts.dmSans(
+                    fontSize: 11, fontWeight: FontWeight.w700,
+                    color: AppColors.muted, letterSpacing: 1.5)),
+          ]),
+          const SizedBox(height: 4),
+          Text('Based on your diagnosis & doctor ratings',
+              style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted)),
+          const SizedBox(height: 10),
+          ..._recommendations.asMap().entries.map((entry) {
+            final i = entry.key;
+            final rec = entry.value;
+            final rating = rec.starRating;
+            return GestureDetector(
+              onTap: () => DoctorProfileCard.show(context, rec),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: rec.isTopRated
+                        ? const Color(0xFF6366F1).withOpacity(0.3)
+                        : AppColors.border,
+                  ),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 46, height: 46,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: rec.isTopRated
+                            ? const [Color(0xFF6366F1), Color(0xFF4F46E5)]
+                            : const [Color(0xFF64748B), Color(0xFF475569)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        rec.doctor.name.isNotEmpty ? rec.doctor.name[0].toUpperCase() : 'D',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text('Dr. ${rec.doctor.name}',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 14, fontWeight: FontWeight.w700,
+                                    color: AppColors.dark),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                          if (rec.isTopRated)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text('TOP RATED',
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 8, fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF6366F1))),
+                            ),
+                        ]),
+                        const SizedBox(height: 2),
+                        Text(
+                          rec.doctor.speciality.isNotEmpty
+                              ? '${rec.doctor.speciality} • ${rec.doctor.hospitalName}'
+                              : rec.doctor.hospitalName,
+                          style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          ...List.generate(5, (si) => Icon(
+                            si < rating.floor()
+                                ? Icons.star_rounded
+                                : (si < rating
+                                    ? Icons.star_half_rounded
+                                    : Icons.star_border_rounded),
+                            color: const Color(0xFFFBBF24), size: 14,
+                          )),
+                          const SizedBox(width: 4),
+                          Text(
+                            rec.doctor.totalTransfers == 0
+                                ? 'New'
+                                : '${rating.toStringAsFixed(1)} • ${rec.doctor.totalTransfers} transfers',
+                            style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.muted, size: 20),
+                ]),
+              ).animate().fadeIn(delay: (400 + i * 80).ms).slideX(begin: 0.05),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   void _showAccessLog(BuildContext context) {
+
+
     final allLogs = _transfers.expand((t) => t.accessLogs).toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 

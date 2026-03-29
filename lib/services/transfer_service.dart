@@ -284,9 +284,22 @@ class TransferService {
     }
   }
 
-  /// Save (create or update) a transfer in Firestore
+  /// Save (create or update) a transfer in Firestore.
+  /// Also auto-updates the sending doctor's stats.
   static Future<void> save(PatientTransfer t) async {
+    final isNew = !(await _db.collection('transfers').doc(t.id).get()).exists;
     await _db.collection('transfers').doc(t.id).set(t.toJson());
+
+    // Auto-track doctor stats — only if sendingDoctor has a phone-like id stored
+    if (t.sendingDoctor.isNotEmpty) {
+      if (isNew) {
+        // New transfer → increment totalTransfers
+        await AuthService.incrementDoctorStats(t.sendingDoctor, completed: false);
+      } else if (t.status == 'received' || t.status == 'completed') {
+        // Transfer arrived/completed → also increment completedTransfers
+        await AuthService.incrementDoctorStats(t.sendingDoctor, completed: true);
+      }
+    }
   }
 
   static Future<void> delete(String id) async {

@@ -7,6 +7,9 @@ class DoctorProfile {
   final String licenseNo;
   final String role; // 'doctor', 'nurse', 'admin'
   final String pinHash; // SHA-256 of the 4-digit PIN
+  final String speciality; // e.g. 'Cardiologist', 'Neurologist'
+  int totalTransfers;    // app-tracked: incremented on each new transfer
+  int completedTransfers; // app-tracked: incremented when transfer is received/completed
   final DateTime registeredAt;
 
   DoctorProfile({
@@ -18,6 +21,9 @@ class DoctorProfile {
     required this.licenseNo,
     this.role = 'doctor',
     required this.pinHash,
+    this.speciality = '',
+    this.totalTransfers = 0,
+    this.completedTransfers = 0,
     required this.registeredAt,
   });
 
@@ -30,6 +36,9 @@ class DoctorProfile {
     'licenseNo': licenseNo,
     'role': role,
     'pinHash': pinHash,
+    'speciality': speciality,
+    'totalTransfers': totalTransfers,
+    'completedTransfers': completedTransfers,
     'registeredAt': registeredAt.toIso8601String(),
   };
 
@@ -42,6 +51,9 @@ class DoctorProfile {
     licenseNo: j['licenseNo'] ?? '',
     role: j['role'] ?? 'doctor',
     pinHash: j['pinHash'] ?? '',
+    speciality: j['speciality'] ?? '',
+    totalTransfers: j['totalTransfers'] ?? 0,
+    completedTransfers: j['completedTransfers'] ?? 0,
     registeredAt: DateTime.parse(j['registeredAt']),
   );
 }
