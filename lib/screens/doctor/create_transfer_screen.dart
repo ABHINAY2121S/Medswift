@@ -749,12 +749,15 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                                 color: selected ? color : const Color(0xFFE5E7EB),
                                 width: selected ? 2 : 1),
                           ),
-                          child: Text(
-                            '${AppTheme.riskEmoji(r)} ${r[0].toUpperCase()}${r.substring(1)}',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.dmSans(
-                                fontSize: 12, fontWeight: FontWeight.w600,
-                                color: selected ? color : AppColors.muted),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '${AppTheme.riskEmoji(r)} ${r[0].toUpperCase()}${r.substring(1)}',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12, fontWeight: FontWeight.w600,
+                                  color: selected ? color : AppColors.muted),
+                            ),
                           ),
                         ),
                       ),
@@ -773,9 +776,15 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                   child: Row(children: [
                     const Icon(Icons.edit_rounded, size: 13, color: AppColors.warn),
                     const SizedBox(width: 6),
-                    Text('Manually overridden from $_suggestedRisk → $_riskLevel',
+                    Flexible(
+                      child: Text(
+                        'Manually set: ${_riskLevel[0].toUpperCase()}${_riskLevel.substring(1)} (AI suggested: $_suggestedRisk)',
                         style: GoogleFonts.dmSans(
-                            fontSize: 11, color: AppColors.warn, fontWeight: FontWeight.w600)),
+                            fontSize: 11, color: AppColors.warn, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                    ),
                   ]),
                 ),
               ],

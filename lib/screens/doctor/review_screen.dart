@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -244,8 +245,95 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
           if (_t.clinicalSummary.isNotEmpty)
             _InfoCard('Clinical Summary', _t.clinicalSummary),
+
           _buildReferringCard(),
           _buildVitalsCard(),
+
+          // ★ Attached Files — visible to receiving doctor
+          if (_t.attachments.isNotEmpty) ...[            
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.attach_file_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text('ATTACHED FILES (${_t.attachments.length})',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: AppColors.muted, letterSpacing: 1.3)),
+                  ]),
+                  const SizedBox(height: 10),
+                  ..._t.attachments.map((att) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border)),
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: AppColors.blueLight,
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Icon(
+                          att.isImage ? Icons.image_rounded : Icons.description_rounded,
+                          color: AppColors.primary, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(att.fileName,
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 13, fontWeight: FontWeight.w600,
+                                  color: AppColors.dark),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(att.sizeLabel,
+                              style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted)),
+                        ],
+                      )),
+                      if (att.isImage)
+                        GestureDetector(
+                          onTap: () => _showImagePreview(context, att),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: AppColors.blueLight,
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Text('View',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 11, color: AppColors.primary,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: Text('DOC',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 11, color: AppColors.muted,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                    ]),
+                  )),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 20),
           Text('ACCESS LOG',
@@ -838,6 +926,37 @@ class _VitalChip extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
           Text(label,
               style: GoogleFonts.dmSans(fontSize: 9, color: Colors.white60)),
+        ]),
+      ),
+    );
+  }
+
+  void _showImagePreview(BuildContext context, TransferAttachment att) {
+    final imageBytes = base64Decode(att.base64Data);
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(
+                child: Text(att.fileName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+              ),
+              IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+            ]),
+          ),
+          Flexible(
+            child: InteractiveViewer(
+              child: Image.memory(imageBytes, fit: BoxFit.contain)),
+          ),
+          const SizedBox(height: 8),
         ]),
       ),
     );

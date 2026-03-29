@@ -106,13 +106,32 @@ class _QrSheet extends StatelessWidget {
 
             Text('Scan to view full patient record',
                 style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.muted)),
-            const SizedBox(height: 4),
-            Text(transfer.viewerUrl,
-                style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    color: AppColors.primary,
-                    decoration: TextDecoration.underline),
-                textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.blueLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.link_rounded, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      transfer.viewerUrl,
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 9,
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
 
             const SizedBox(height: 24),
 
