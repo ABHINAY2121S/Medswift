@@ -76,12 +76,13 @@ class _PinInputWidgetState extends State<PinInputWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(4, (i) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: SizedBox(
-            width: 56,
-            height: 60,
-            child: TextFormField(
+        return Flexible(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: SizedBox(
+              width: 52,
+              height: 60,
+              child: TextFormField(
               controller: _controllers[i],
               focusNode: _focusNodes[i],
               keyboardType: TextInputType.number,
@@ -116,6 +117,7 @@ class _PinInputWidgetState extends State<PinInputWidget> {
                   extentOffset: _controllers[i].text.length),
             ),
           ),
+        ),
         );
       }),
     );

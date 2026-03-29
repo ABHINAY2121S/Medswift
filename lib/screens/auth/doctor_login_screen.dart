@@ -200,7 +200,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
                   tabs: const [Tab(text: 'Login'), Tab(text: 'New Doctor')],
                 ),
                 SizedBox(
-                  height: 400,
+                  // Large enough for New Doctor tab (5 fields + 2 PINs + button)
+                  height: 600,
                   child: TabBarView(
                       controller: _tab,
                       children: [_buildLoginTab(), _buildRegisterTab()]),
@@ -230,6 +231,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
 
   Widget _buildLoginTab() {
     return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,6 +268,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen>
 
   Widget _buildRegisterTab() {
     return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

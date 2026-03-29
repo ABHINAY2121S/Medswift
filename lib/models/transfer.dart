@@ -104,10 +104,13 @@ class PatientTransfer {
   final Vitals vitals;
   // Transfer info
   final String riskLevel; // safe, moderate, critical
+  final int riskScore;    // 0–100 percentage
   final String sendingHospital;
   final String sendingDoctor;
   final String receivingHospital;
   final DateTime createdAt;
+  // Comorbidities (e.g. ['Diabetes Type 2', 'Hypothyroidism', 'HTN'])
+  List<String> comorbidities;
   // Status
   bool isReviewed;
   String? arrivalNote;
@@ -131,17 +134,20 @@ class PatientTransfer {
     required this.transferReason,
     required this.vitals,
     required this.riskLevel,
+    this.riskScore = 0,
     required this.sendingHospital,
     required this.sendingDoctor,
     this.receivingHospital = '',
     required this.createdAt,
+    List<String>? comorbidities,
     this.isReviewed = false,
     this.arrivalNote,
     this.isFlagged = false,
     List<AccessLog>? accessLogs,
     this.status = 'pending',
     List<TransferAttachment>? attachments,
-  })  : accessLogs = accessLogs ?? [],
+  })  : comorbidities = comorbidities ?? [],
+        accessLogs = accessLogs ?? [],
         attachments = attachments ?? [];
 
   Map<String, dynamic> toJson() => {
@@ -158,10 +164,12 @@ class PatientTransfer {
     'transferReason': transferReason,
     'vitals': vitals.toJson(),
     'riskLevel': riskLevel,
+    'riskScore': riskScore,
     'sendingHospital': sendingHospital,
     'sendingDoctor': sendingDoctor,
     'receivingHospital': receivingHospital,
     'createdAt': createdAt.toIso8601String(),
+    'comorbidities': comorbidities,
     'isReviewed': isReviewed,
     'arrivalNote': arrivalNote,
     'isFlagged': isFlagged,
@@ -184,10 +192,14 @@ class PatientTransfer {
     transferReason: j['transferReason'],
     vitals: Vitals.fromJson(j['vitals'] ?? {}),
     riskLevel: j['riskLevel'],
+    riskScore: j['riskScore'] ?? 0,
     sendingHospital: j['sendingHospital'],
     sendingDoctor: j['sendingDoctor'],
     receivingHospital: j['receivingHospital'] ?? '',
     createdAt: DateTime.parse(j['createdAt']),
+    comorbidities: (j['comorbidities'] as List<dynamic>? ?? [])
+        .map((c) => c.toString())
+        .toList(),
     isReviewed: j['isReviewed'] ?? false,
     arrivalNote: j['arrivalNote'],
     isFlagged: j['isFlagged'] ?? false,
@@ -218,10 +230,12 @@ class PatientTransfer {
         : transferReason,
     'vitals': vitals.toJson(),
     'riskLevel': riskLevel,
+    'riskScore': riskScore,
     'sendingHospital': sendingHospital,
     'sendingDoctor': sendingDoctor,
     'receivingHospital': receivingHospital,
     'createdAt': createdAt.toIso8601String(),
+    'comorbidities': comorbidities,
     'status': status,
     'isReviewed': isReviewed,
     'isFlagged': isFlagged,

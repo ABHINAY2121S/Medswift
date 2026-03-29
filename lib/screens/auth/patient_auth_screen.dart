@@ -238,7 +238,8 @@ class _PatientAuthScreenState extends State<PatientAuthScreen>
                   tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
                 ),
                 SizedBox(
-                  height: 380,
+                  // Large enough for Register tab (3 fields + 2 PINs + button)
+                  height: 560,
                   child: TabBarView(
                       controller: _tab,
                       children: [_buildLogin(), _buildRegister()]),
@@ -253,6 +254,8 @@ class _PatientAuthScreenState extends State<PatientAuthScreen>
 
   Widget _buildLogin() {
     return SingleChildScrollView(
+      // physics: never — outer ListView handles scroll
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,6 +296,8 @@ class _PatientAuthScreenState extends State<PatientAuthScreen>
 
   Widget _buildRegister() {
     return SingleChildScrollView(
+      // physics: never — outer ListView handles scroll
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -73,17 +73,7 @@ class _QrSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                        color: AppTheme.riskBgColor(transfer.riskLevel),
-                        borderRadius: BorderRadius.circular(20)),
-                    child: Text(transfer.riskLevel.toUpperCase(),
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: riskColor)),
-                  ),
+                  _MiniRiskBadge(score: transfer.riskScore, level: transfer.riskLevel),
                 ],
               ),
             ),
@@ -197,6 +187,69 @@ class _InfoChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Compact risk badge ────────────────────────────────────────────────────────
+class _MiniRiskBadge extends StatelessWidget {
+  final int score;
+  final String level;
+  const _MiniRiskBadge({required this.score, required this.level});
+
+  Color get _color {
+    if (score >= 70) return const Color(0xFFDC2626);
+    if (score >= 40) return const Color(0xFFF59E0B);
+    return const Color(0xFF059669);
+  }
+
+  Color get _bg {
+    if (score >= 70) return const Color(0xFFFEE2E2);
+    if (score >= 40) return const Color(0xFFFEF3C7);
+    return const Color(0xFFD1FAE5);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text('$score%',
+            style: GoogleFonts.dmSans(
+                fontSize: 18, fontWeight: FontWeight.w800, color: _color, height: 1)),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            width: 72, height: 5,
+            child: Stack(children: [
+              Container(color: const Color(0xFFF3F4F6)),
+              FractionallySizedBox(
+                widthFactor: (score / 100).clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: score >= 70
+                          ? [const Color(0xFFF59E0B), const Color(0xFFDC2626)]
+                          : score >= 40
+                              ? [const Color(0xFF10B981), const Color(0xFFF59E0B)]
+                              : [const Color(0xFF34D399), const Color(0xFF10B981)],
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
+          child: Text(level.toUpperCase(),
+              style: GoogleFonts.dmSans(
+                  fontSize: 9, fontWeight: FontWeight.w800, color: _color, letterSpacing: 0.5)),
+        ),
+      ],
     );
   }
 }

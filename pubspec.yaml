@@ -28,6 +28,7 @@ dependencies:
   cloud_firestore: ^5.4.3
   crypto: ^3.0.3
   file_picker: ^8.1.2
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:

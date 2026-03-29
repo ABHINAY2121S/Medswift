@@ -88,7 +88,7 @@ class TransferDetailScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20)),
-                  child: Text(transfer.riskLevel.toUpperCase(),
+                  child: Text('${transfer.riskScore}% ${transfer.riskLevel.toUpperCase()}',
                       style: GoogleFonts.dmSans(
                           fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
@@ -306,14 +306,20 @@ class TransferDetailScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(8),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(att.fileName,
-                  style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+              Expanded(
+                child: Text(att.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+              ),
               IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close, color: Colors.white)),
             ]),
           ),
-          InteractiveViewer(child: Image.memory(imageBytes, fit: BoxFit.contain)),
+          Flexible(
+            child: InteractiveViewer(child: Image.memory(imageBytes, fit: BoxFit.contain)),
+          ),
           const SizedBox(height: 8),
         ]),
       ),

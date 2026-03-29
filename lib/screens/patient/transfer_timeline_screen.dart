@@ -208,15 +208,23 @@ class _TimelineEntry extends StatelessWidget {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: riskBg, borderRadius: BorderRadius.circular(20)),
-                          child: Text(transfer.riskLevel.toUpperCase(),
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 9, fontWeight: FontWeight.w700, color: riskColor)),
+                        Flexible(
+                          flex: 3,
+                          child: _MiniRiskInline(score: transfer.riskScore, level: transfer.riskLevel),
                         ),
-                        Text(date, style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted)),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          flex: 2,
+                          child: Text(
+                            date,
+                            style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted),
+                            textAlign: TextAlign.right,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -228,8 +236,11 @@ class _TimelineEntry extends StatelessWidget {
                       Row(children: [
                         Text('→', style: GoogleFonts.dmSans(color: AppColors.muted, fontSize: 12)),
                         const SizedBox(width: 4),
-                        Text(transfer.receivingHospital,
-                            style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                        Expanded(
+                          child: Text(transfer.receivingHospital,
+                              style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
                       ]),
                     ],
                     const SizedBox(height: 6),
@@ -285,6 +296,74 @@ class _TimelineEntry extends StatelessWidget {
           ),
         ],
       ).animate().fadeIn(delay: (index * 80).ms).slideX(begin: 0.1),
+    );
+  }
+}
+
+// ── Inline compact risk widget (fits in a row, horizontal bar) ───────────────
+class _MiniRiskInline extends StatelessWidget {
+  final int score;
+  final String level;
+  const _MiniRiskInline({required this.score, required this.level});
+
+  Color get _color {
+    if (score >= 70) return const Color(0xFFDC2626);
+    if (score >= 40) return const Color(0xFFF59E0B);
+    return const Color(0xFF059669);
+  }
+
+  Color get _bg {
+    if (score >= 70) return const Color(0xFFFEE2E2);
+    if (score >= 40) return const Color(0xFFFEF3C7);
+    return const Color(0xFFD1FAE5);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+        Text('$score%',
+            style: GoogleFonts.dmSans(
+                fontSize: 14, fontWeight: FontWeight.w800, color: _color, height: 1)),
+        const SizedBox(width: 6),
+        // Mini bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: SizedBox(
+            width: 48, height: 5,
+            child: Stack(children: [
+              Container(color: const Color(0xFFF3F4F6)),
+              FractionallySizedBox(
+                widthFactor: (score / 100).clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: score >= 70
+                          ? [const Color(0xFFF59E0B), const Color(0xFFDC2626)]
+                          : score >= 40
+                              ? [const Color(0xFF10B981), const Color(0xFFF59E0B)]
+                              : [const Color(0xFF34D399), const Color(0xFF10B981)],
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
+          child: Text(level.toUpperCase(),
+              style: GoogleFonts.dmSans(
+                  fontSize: 8, fontWeight: FontWeight.w800, color: _color, letterSpacing: 0.5)),
+        ),
+      ],
+    ),
     );
   }
 }

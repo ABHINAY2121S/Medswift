@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../services/transfer_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class ReviewScreen extends StatefulWidget {
   final PatientTransfer transfer;
@@ -19,11 +20,71 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final _noteCtrl = TextEditingController();
   bool _saving = false;
 
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+
   @override
   void initState() {
     super.initState();
     _t = widget.transfer;
     _noteCtrl.text = _t.arrivalNote ?? '';
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    final available = await _speech.initialize(
+      onError: (e) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+             content: Text('Speech error: ${e.errorMsg}', style: GoogleFonts.dmSans()),
+             backgroundColor: AppColors.danger,
+             behavior: SnackBarBehavior.floating,
+           ));
+        }
+      },
+    );
+    if (mounted) setState(() => _speechAvailable = available);
+  }
+
+  Future<void> _toggleListen() async {
+    if (!_speechAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Microphone not available', style: GoogleFonts.dmSans()),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    if (_speech.isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+      return;
+    }
+    setState(() => _isListening = true);
+    final existing = _noteCtrl.text.trim();
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        final words = result.recognizedWords;
+        _noteCtrl.text = existing.isEmpty ? words : '$existing $words';
+        _noteCtrl.selection = TextSelection.fromPosition(
+          TextPosition(offset: _noteCtrl.text.length),
+        );
+      },
+      listenFor: const Duration(minutes: 60),
+      pauseFor: const Duration(minutes: 60),
+      listenMode: stt.ListenMode.dictation,
+      listenOptions: stt.SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+      ),
+    );
+    _speech.statusListener = (status) {
+      if (status == 'done' || status == 'notListening') {
+        if (mounted) setState(() => _isListening = false);
+      }
+    };
   }
 
   @override
@@ -213,17 +274,65 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   border: Border.all(color: AppColors.border)),
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Arrival Note',
+                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+                      GestureDetector(
+                        onTap: _toggleListen,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _isListening ? AppColors.critical : AppColors.blueLight,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: _isListening
+                                ? [BoxShadow(color: AppColors.critical.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)]
+                                : [],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                                size: 14,
+                                color: _isListening ? Colors.white : AppColors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _isListening ? 'Stop' : 'Dictate',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _isListening ? Colors.white : AppColors.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ]
+                  ),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _noteCtrl,
-                    maxLines: 3,
+                    maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: 'Enter arrival note...',
-                      hintStyle: GoogleFonts.dmSans(color: AppColors.muted),
+                      hintText: _isListening ? '🎤 Listening... speak now' : 'Enter arrival note...',
+                      hintStyle: GoogleFonts.dmSans(
+                          color: _isListening ? AppColors.critical : AppColors.muted,
+                          fontWeight: _isListening ? FontWeight.w500 : FontWeight.normal),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none),
+                          borderSide: _isListening ? BorderSide(color: AppColors.critical.withOpacity(0.5)) : BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: _isListening ? BorderSide(color: AppColors.critical.withOpacity(0.5)) : BorderSide.none),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _isListening ? AppColors.critical : AppColors.primary, width: 1.5)),
                       filled: true,
-                      fillColor: AppColors.bg,
+                      fillColor: _isListening ? AppColors.redLight : AppColors.bg,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -323,16 +432,26 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14)),
-                child: Column(children: [
-                  Text(AppTheme.riskEmoji(_t.riskLevel), style: const TextStyle(fontSize: 20)),
-                  Text(_t.riskLevel.toUpperCase(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${_t.riskScore}%',
                       style: GoogleFonts.dmSans(
-                          fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-                ]),
+                          fontSize: 26, fontWeight: FontWeight.w800,
+                          color: Colors.white, height: 1),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(_t.riskLevel.toUpperCase(),
+                        style: GoogleFonts.dmSans(
+                            fontSize: 9, fontWeight: FontWeight.w700,
+                            color: Colors.white70, letterSpacing: 1)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -389,6 +508,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ],
             ),
           ),
+          if (_t.comorbidities.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('COMORBIDITIES',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _t.comorbidities.map((c) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Text(c,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
