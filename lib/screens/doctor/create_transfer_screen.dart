@@ -608,95 +608,86 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Label + word count row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Clinical Summary',
                           style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted,
                               fontWeight: FontWeight.w500)),
-                      Row(children: [
-                        Text('$_summaryWords / 200 words',
-                            style: GoogleFonts.dmSans(fontSize: 11,
-                                color: _summaryWords > 200 ? AppColors.critical : AppColors.muted)),
-                        const SizedBox(width: 6),
-                        // ✨ Auto-Draft button
-                        GestureDetector(
-                          onTap: _autoDraftSummary,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              gradient: _draftGenerated
-                                  ? const LinearGradient(
-                                      colors: [Color(0xFF059669), Color(0xFF047857)])
-                                  : const LinearGradient(
-                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF6366F1).withOpacity(0.35),
-                                  blurRadius: 8, spreadRadius: 0)
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _draftGenerated ? Icons.check_rounded : Icons.auto_awesome_rounded,
-                                  size: 13, color: Colors.white),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _draftGenerated ? 'Re-draft' : '✨ Auto-Draft',
-                                  style: GoogleFonts.dmSans(
-                                      fontSize: 11, fontWeight: FontWeight.w700,
-                                      color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        _micButton('summary', _summaryCtrl),
-                      ]),
+                      Text('$_summaryWords / 200 words',
+                          style: GoogleFonts.dmSans(fontSize: 11,
+                              color: _summaryWords > 200 ? AppColors.critical : AppColors.muted)),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Stack(
-                    children: [
-                      TextFormField(
-                        controller: _summaryCtrl,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: _listeningField == 'summary'
-                              ? '🎤 Listening…'
-                              : 'Brief clinical summary…',
-                          hintStyle: GoogleFonts.dmSans(
-                              color: _listeningField == 'summary'
-                                  ? AppColors.critical
-                                  : AppColors.muted.withOpacity(0.6),
-                              fontSize: 13),
-                          filled: true,
-                          fillColor: _listeningField == 'summary'
-                              ? AppColors.redLight
-                              : AppColors.bg,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: _listeningField == 'summary'
-                                  ? BorderSide(color: AppColors.critical.withOpacity(0.5))
-                                  : BorderSide.none),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: _listeningField == 'summary'
-                                  ? BorderSide(color: AppColors.critical.withOpacity(0.5))
-                                  : BorderSide.none),
-                          contentPadding: const EdgeInsets.all(12),
-                        ),
-                        validator: (v) => _summaryWords > 200 ? 'Max 200 words' : null,
+                  const SizedBox(height: 8),
+                  // ✨ Full-width Auto-Draft button
+                  GestureDetector(
+                    onTap: _autoDraftSummary,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: _draftGenerated
+                            ? const LinearGradient(
+                                colors: [Color(0xFF059669), Color(0xFF047857)])
+                            : const LinearGradient(
+                                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.3),
+                            blurRadius: 8, offset: const Offset(0, 2))
+                        ],
                       ),
-                    ],
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _draftGenerated ? Icons.check_rounded : Icons.auto_awesome_rounded,
+                            size: 15, color: Colors.white),
+                          const SizedBox(width: 6),
+                          Text(
+                            _draftGenerated
+                                ? '✓ Re-draft Summary'
+                                : '✨ Auto-Draft Clinical Summary',
+                            style: GoogleFonts.dmSans(
+                                fontSize: 13, fontWeight: FontWeight.w700,
+                                color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Text field
+                  TextFormField(
+                    controller: _summaryCtrl,
+                    maxLines: 4,
+                    style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.dark),
+                    decoration: InputDecoration(
+                      hintText: 'Brief clinical summary…',
+                      hintStyle: GoogleFonts.dmSans(
+                          color: AppColors.muted.withOpacity(0.6), fontSize: 13),
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                    validator: (v) => _summaryWords > 200 ? 'Max 200 words' : null,
                   ),
                 ],
               ),
+
             ]),
 
             const SizedBox(height: 20),
