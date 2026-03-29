@@ -89,6 +89,8 @@ class PatientProfile {
   final String phone;
   final String dob; // DD/MM/YYYY
   final String pinHash; // SHA-256 of the 4-digit PIN
+  final String bloodGroup;      // e.g. A+, O-, B+
+  final String emergencyContact; // phone number of emergency contact
   final DateTime registeredAt;
 
   PatientProfile({
@@ -98,6 +100,8 @@ class PatientProfile {
     required this.phone,
     required this.dob,
     required this.pinHash,
+    this.bloodGroup = '',
+    this.emergencyContact = '',
     required this.registeredAt,
   });
 
@@ -108,6 +112,8 @@ class PatientProfile {
     'phone': phone,
     'dob': dob,
     'pinHash': pinHash,
+    'bloodGroup': bloodGroup,
+    'emergencyContact': emergencyContact,
     'registeredAt': registeredAt.toIso8601String(),
   };
 
@@ -118,6 +124,8 @@ class PatientProfile {
     phone: j['phone'],
     dob: j['dob'] ?? '',
     pinHash: j['pinHash'] ?? '',
+    bloodGroup: j['bloodGroup'] ?? '',
+    emergencyContact: j['emergencyContact'] ?? '',
     registeredAt: DateTime.parse(j['registeredAt']),
   );
 }

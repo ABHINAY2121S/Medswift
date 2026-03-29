@@ -119,6 +119,9 @@ class PatientTransfer {
   String status; // 'pending', 'en_route', 'received', 'completed'
   // Attachments
   List<TransferAttachment> attachments;
+  // Real-time transfer tracking
+  DateTime? dispatchTime;  // when ambulance departed
+  int etaMinutes;          // estimated minutes to destination
 
   PatientTransfer({
     required this.id,
@@ -146,6 +149,8 @@ class PatientTransfer {
     List<AccessLog>? accessLogs,
     this.status = 'pending',
     List<TransferAttachment>? attachments,
+    this.dispatchTime,
+    this.etaMinutes = 30,
   })  : comorbidities = comorbidities ?? [],
         accessLogs = accessLogs ?? [],
         attachments = attachments ?? [];
@@ -176,6 +181,8 @@ class PatientTransfer {
     'accessLogs': accessLogs.map((l) => l.toJson()).toList(),
     'status': status,
     'attachments': attachments.map((a) => a.toJson()).toList(),
+    'dispatchTime': dispatchTime?.toIso8601String(),
+    'etaMinutes': etaMinutes,
   };
 
   factory PatientTransfer.fromJson(Map<String, dynamic> j) => PatientTransfer(
@@ -210,6 +217,10 @@ class PatientTransfer {
     attachments: (j['attachments'] as List<dynamic>? ?? [])
         .map((a) => TransferAttachment.fromJson(a))
         .toList(),
+    dispatchTime: j['dispatchTime'] != null
+        ? DateTime.tryParse(j['dispatchTime'])
+        : null,
+    etaMinutes: j['etaMinutes'] ?? 30,
   );
 
   /// Minimal JSON for QR — excludes large fields (attachments, access logs, clinical summary).

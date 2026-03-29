@@ -11,6 +11,7 @@ import '../../widgets/qr_modal.dart';
 import 'transfer_timeline_screen.dart';
 import 'transfer_detail_screen.dart';
 import '../role_selection_screen.dart';
+import '../../widgets/emergency_card.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   const PatientDashboardScreen({super.key});
@@ -51,6 +52,28 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 🚨 SOS Floating Action Button
+      floatingActionButton: _loading
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => EmergencyCard.show(
+                context,
+                patientName: _latest?.patientName ?? _patient?.name ?? 'Patient',
+                patientId: _patient?.patientId ?? _latest?.patientId ?? '',
+                allergies: _latest?.allergies ?? '',
+                medications: _latest?.medications ?? '',
+                bloodGroup: _patient?.bloodGroup ?? '',
+                emergencyContact: _patient?.emergencyContact ?? '',
+                latestTransfer: _latest,
+              ),
+              backgroundColor: const Color(0xFFDC2626),
+              icon: const Icon(Icons.emergency_rounded, color: Colors.white),
+              label: Text('SOS Card',
+                  style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700, color: Colors.white)),
+              elevation: 6,
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: RefreshIndicator(
         onRefresh: _load,
         color: AppColors.accent,
@@ -66,7 +89,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               if (_transfers.isNotEmpty)
                 SliverToBoxAdapter(child: _buildRecentTransfers(context)),
               SliverToBoxAdapter(child: _buildAllergiesCard()),
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ],
         ),

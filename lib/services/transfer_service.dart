@@ -303,6 +303,15 @@ class TransferService {
     }
   }
 
+  /// Real-time stream for a single transfer document
+  static Stream<PatientTransfer?> stream(String id) {
+    return _db.collection('transfers').doc(id).snapshots().map((snap) {
+      if (!snap.exists) return null;
+      return PatientTransfer.fromJson(snap.data()!);
+    });
+  }
+
+
   static String generateId() => _uuid.v4().substring(0, 8).toUpperCase();
 
   static String generatePatientId() =>

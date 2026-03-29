@@ -74,6 +74,7 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechAvailable = false;
   String? _listeningField; // 'meds' | 'reason' | 'summary'
+  bool _draftGenerated = false;
 
   @override
   void initState() {
@@ -166,6 +167,80 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
     final words = _summaryCtrl.text.trim().split(RegExp(r'\s+'));
     setState(() => _summaryWords = _summaryCtrl.text.isEmpty ? 0 : words.length);
   }
+
+  void _autoDraftSummary() {
+    final name = _nameCtrl.text.trim();
+    final age = _ageCtrl.text.trim();
+    final diagnosis = _diagnosisCtrl.text.trim();
+    final allergies = _allergiesCtrl.text.trim();
+    final meds = _medsCtrl.text.trim();
+    final bp = _bpCtrl.text.trim();
+    final pulse = _pulseCtrl.text.trim();
+    final temp = _tempCtrl.text.trim();
+    final spo2 = _spo2Ctrl.text.trim();
+    final reason = _reasonCtrl.text.trim();
+    final comorbs = _selectedComorbidities.toList();
+
+    final buffer = StringBuffer();
+
+    // Patient intro
+    if (name.isNotEmpty) {
+      buffer.write('Patient ${name}');
+      if (age.isNotEmpty) buffer.write(', $age-year-old $_gender');
+      buffer.write('. ');
+    }
+
+    // Diagnosis
+    if (diagnosis.isNotEmpty) {
+      buffer.write('Presenting with $diagnosis. ');
+    }
+
+    // Transfer reason
+    if (reason.isNotEmpty) {
+      buffer.write('Transferred for: $reason. ');
+    }
+
+    // Vitals
+    final vitalsBuffer = StringBuffer();
+    if (bp.isNotEmpty)    vitalsBuffer.write('BP $bp');
+    if (pulse.isNotEmpty) { if (vitalsBuffer.isNotEmpty) vitalsBuffer.write(', '); vitalsBuffer.write('Pulse $pulse bpm'); }
+    if (temp.isNotEmpty)  { if (vitalsBuffer.isNotEmpty) vitalsBuffer.write(', '); vitalsBuffer.write('Temp ${temp}°F'); }
+    if (spo2.isNotEmpty)  { if (vitalsBuffer.isNotEmpty) vitalsBuffer.write(', '); vitalsBuffer.write('SpO2 $spo2%'); }
+    if (vitalsBuffer.isNotEmpty) buffer.write('Vitals at transfer: $vitalsBuffer. ');
+
+    // Medications
+    if (meds.isNotEmpty) {
+      buffer.write('Current medications: $meds. ');
+    }
+
+    // Allergies
+    if (allergies.isNotEmpty) {
+      buffer.write('Known allergies: $allergies. ');
+    }
+
+    // Comorbidities
+    if (comorbs.isNotEmpty) {
+      buffer.write('Comorbidities: ${comorbs.join(", ")}. ');
+    }
+
+    // Risk
+    buffer.write('AI Risk Score: $_riskPercent% ($_riskLevel). ');
+    buffer.write('Transfer initiated by Dr. ${_doctor?.name ?? "attending physician"} at ${_doctor?.hospitalName ?? "sending hospital"}.');
+
+    final draft = buffer.toString().trim();
+    if (draft.isEmpty) {
+      _snack('Fill in patient details first to auto-draft', err: true);
+      return;
+    }
+
+    _summaryCtrl.text = draft;
+    _summaryCtrl.selection = TextSelection.fromPosition(
+      TextPosition(offset: draft.length),
+    );
+    setState(() => _draftGenerated = true);
+    _snack('✨ Clinical summary auto-drafted!');
+  }
+
 
   @override
   void dispose() {
@@ -543,7 +618,44 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
                         Text('$_summaryWords / 200 words',
                             style: GoogleFonts.dmSans(fontSize: 11,
                                 color: _summaryWords > 200 ? AppColors.critical : AppColors.muted)),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
+                        // ✨ Auto-Draft button
+                        GestureDetector(
+                          onTap: _autoDraftSummary,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              gradient: _draftGenerated
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF059669), Color(0xFF047857)])
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6366F1).withOpacity(0.35),
+                                  blurRadius: 8, spreadRadius: 0)
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _draftGenerated ? Icons.check_rounded : Icons.auto_awesome_rounded,
+                                  size: 13, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _draftGenerated ? 'Re-draft' : '✨ Auto-Draft',
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 11, fontWeight: FontWeight.w700,
+                                      color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
                         _micButton('summary', _summaryCtrl),
                       ]),
                     ],

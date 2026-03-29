@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,10 +7,38 @@ import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../widgets/qr_modal.dart';
+import '../../services/transfer_service.dart';
+import '../../widgets/transfer_status_tracker.dart';
 
-class TransferDetailScreen extends StatelessWidget {
+class TransferDetailScreen extends StatefulWidget {
   final PatientTransfer transfer;
   const TransferDetailScreen({super.key, required this.transfer});
+
+  @override
+  State<TransferDetailScreen> createState() => _TransferDetailScreenState();
+}
+
+class _TransferDetailScreenState extends State<TransferDetailScreen> {
+  late PatientTransfer transfer;
+  StreamSubscription<PatientTransfer?>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    transfer = widget.transfer;
+    // Subscribe to Firestore real-time updates
+    _sub = TransferService.stream(transfer.id).listen((updated) {
+      if (updated != null && mounted) {
+        setState(() => transfer = updated);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +129,10 @@ class TransferDetailScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Attending physician
+          // ★ Real-time status tracker
+          TransferStatusTracker(transfer: transfer).animate().fadeIn(delay: 100.ms),
+
+          const SizedBox(height: 4),
           _DetailCard(
             title: 'Attending Physician',
             child: Row(children: [

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../services/transfer_service.dart';
+import '../../widgets/transfer_status_tracker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class ReviewScreen extends StatefulWidget {
@@ -156,6 +157,44 @@ class _ReviewScreenState extends State<ReviewScreen> {
     ));
   }
 
+  Future<void> _markEnRoute() async {
+    _t.status = 'en_route';
+    _t.dispatchTime = DateTime.now();
+    _t.accessLogs.add(AccessLog(
+      doctorName: 'Dr. Sarah Chen',
+      hospital: 'Metro Heart Center',
+      timestamp: DateTime.now(),
+      action: 'dispatched',
+    ));
+    await TransferService.save(_t);
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('🚑 Patient marked as En Route!', style: GoogleFonts.dmSans()),
+      backgroundColor: const Color(0xFF6366F1),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
+  Future<void> _markArrived() async {
+    _t.status = 'received';
+    _t.isReviewed = true;
+    _t.accessLogs.add(AccessLog(
+      doctorName: 'Dr. Sarah Chen',
+      hospital: 'Metro Heart Center',
+      timestamp: DateTime.now(),
+      action: 'arrived',
+    ));
+    await TransferService.save(_t);
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('✅ Patient arrived & transfer complete!', style: GoogleFonts.dmSans()),
+      backgroundColor: AppColors.accent,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final riskColor = AppTheme.riskColor(_t.riskLevel);
@@ -198,6 +237,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
           _InfoCard('Diagnosis', _t.diagnosis),
           _InfoCard('Transfer Reason', _t.transferReason),
+
+          // ★ Real-time status tracker + control panel
+          TransferStatusTracker(transfer: _t),
+          _buildStatusControls(),
+
           if (_t.clinicalSummary.isNotEmpty)
             _InfoCard('Clinical Summary', _t.clinicalSummary),
           _buildReferringCard(),
@@ -579,6 +623,83 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
     );
   }
+
+  Widget _buildStatusControls() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('UPDATE STATUS',
+              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700,
+                  color: AppColors.muted, letterSpacing: 1.3)),
+          const SizedBox(height: 12),
+          Row(children: [
+            // En Route button
+            if (_t.status == 'pending' || _t.status == 'created')
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _markEnRoute,
+                  icon: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 16),
+                  label: Text('Mark En Route',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            if (_t.status == 'pending' || _t.status == 'created') const SizedBox(width: 8),
+            // Mark Arrived button
+            if (_t.status != 'received' && _t.status != 'completed')
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _markArrived,
+                  icon: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 16),
+                  label: Text('Mark Arrived',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            if (_t.status == 'received' || _t.status == 'completed')
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.verified_rounded, color: AppColors.accent, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Transfer Complete',
+                        style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700, color: AppColors.accent, fontSize: 13)),
+                  ]),
+                ),
+              ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+
 
   Widget _buildVitalsCard() {
     return _buildInfoContainer(
