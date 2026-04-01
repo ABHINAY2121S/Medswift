@@ -33,8 +33,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   Future<void> _load() async {
-    final data = await TransferService.getAll();
     final doc = await AuthService.getCurrentDoctor();
+    final data = await TransferService.getByDoctor(doc?.phone ?? '');
     if (mounted) setState(() { _transfers = data; _doctor = doc; _loading = false; });
   }
 

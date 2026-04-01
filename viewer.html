@@ -580,7 +580,9 @@
     setText('d-temp', t.vitals?.temp || '—');
     setText('d-spo2', t.vitals?.spo2 || '—');
     setText('d-hospital', t.sendingHospital);
-    setText('d-doctor', t.sendingDoctor);
+    document.getElementById('q-hospital').textContent = t.sendingHospital || 'Unknown Hospital';
+    document.getElementById('q-doctor').textContent = t.sendingDoctorName || t.sendingDoctor || 'Unknown Doctor';
+    document.getElementById('q-receiving').textContent = t.receivingHospital || 'Not Specified';
 
     if (t.clinicalSummary) {
       $('d-summary-card').style.display = '';

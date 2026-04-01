@@ -273,7 +273,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         Text(t.sendingHospital,
                             style: GoogleFonts.dmSans(
                                 fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.dark)),
-                        Text('${t.sendingDoctor} • ${_formatTime(t.createdAt)}',
+                        Text('${t.sendingDoctorName} • ${_formatTime(t.createdAt)}',
                             style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.muted)),
                       ],
                     )),

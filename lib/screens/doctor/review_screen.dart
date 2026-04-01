@@ -702,7 +702,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 Text(_t.sendingHospital,
                     style: GoogleFonts.dmSans(
                         fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.dark)),
-                Text(_t.sendingDoctor,
+                Text(_t.sendingDoctorName,
                     style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted)),
               ],
             ),

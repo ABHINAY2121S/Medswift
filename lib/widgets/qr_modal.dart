@@ -309,7 +309,7 @@ class _QrSheetState extends State<_QrSheet> {
                 child: Row(children: [
                   _InfoChip(Icons.local_hospital_rounded, _t.sendingHospital),
                   const SizedBox(width: 8),
-                  _InfoChip(Icons.person_rounded, _t.sendingDoctor),
+                  _InfoChip(Icons.person_rounded, _t.sendingDoctorName),
                 ]),
               ),
               const SizedBox(height: 16),

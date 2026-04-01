@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../models/transfer.dart';
 import '../../services/transfer_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/qr_modal.dart';
 import 'review_screen.dart';
 import 'create_transfer_screen.dart';
@@ -30,7 +31,8 @@ class _TransferHistoryScreenState extends State<TransferHistoryScreen> {
   }
 
   Future<void> _load() async {
-    final data = await TransferService.getAll();
+    final doc = await AuthService.getCurrentDoctor();
+    final data = await TransferService.getByDoctor(doc?.phone ?? '');
     if (mounted) {
       setState(() {
         _all = data;

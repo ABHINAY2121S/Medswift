@@ -253,7 +253,7 @@ class _TimelineEntry extends StatelessWidget {
                       const Icon(Icons.medical_services_rounded, size: 12, color: AppColors.muted),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(transfer.sendingDoctor,
+                        child: Text(transfer.sendingDoctorName,
                             style: GoogleFonts.dmSans(
                                 fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500)),
                       ),

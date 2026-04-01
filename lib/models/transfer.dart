@@ -106,7 +106,11 @@ class PatientTransfer {
   final String riskLevel; // safe, moderate, critical
   final int riskScore;    // 0–100 percentage
   final String sendingHospital;
+  /// Unique identifier for the sending doctor (their phone number, e.g. +919876543210).
+  /// Used for Firestore queries — never display this directly in UI.
   final String sendingDoctor;
+  /// Human-readable doctor name for display in UI / viewer.
+  final String sendingDoctorName;
   final String receivingHospital;
   final DateTime createdAt;
   // Comorbidities (e.g. ['Diabetes Type 2', 'Hypothyroidism', 'HTN'])
@@ -143,6 +147,7 @@ class PatientTransfer {
     this.riskScore = 0,
     required this.sendingHospital,
     required this.sendingDoctor,
+    this.sendingDoctorName = '',
     this.receivingHospital = '',
     required this.createdAt,
     List<String>? comorbidities,
@@ -184,6 +189,7 @@ class PatientTransfer {
     'riskScore': riskScore,
     'sendingHospital': sendingHospital,
     'sendingDoctor': sendingDoctor,
+    'sendingDoctorName': sendingDoctorName,
     'receivingHospital': receivingHospital,
     'createdAt': createdAt.toIso8601String(),
     'comorbidities': comorbidities,
@@ -216,6 +222,7 @@ class PatientTransfer {
     riskScore: j['riskScore'] ?? 0,
     sendingHospital: j['sendingHospital'],
     sendingDoctor: j['sendingDoctor'],
+    sendingDoctorName: j['sendingDoctorName'] ?? j['sendingDoctor'] ?? '',
     receivingHospital: j['receivingHospital'] ?? '',
     createdAt: DateTime.parse(j['createdAt']),
     comorbidities: (j['comorbidities'] as List<dynamic>? ?? [])
@@ -262,6 +269,7 @@ class PatientTransfer {
     'riskScore': riskScore,
     'sendingHospital': sendingHospital,
     'sendingDoctor': sendingDoctor,
+    'sendingDoctorName': sendingDoctorName,
     'receivingHospital': receivingHospital,
     'createdAt': createdAt.toIso8601String(),
     'comorbidities': comorbidities,

@@ -246,7 +246,7 @@ class TransferService {
 
   // ── CRUD (Firestore-backed) ─────────────────────────────────────────────
 
-  /// Get all transfers (for doctor dashboard — all transfers in system)
+  /// Get all transfers (for admin use / QR scan fallback)
   static Future<List<PatientTransfer>> getAll() async {
     try {
       final snap = await _db
@@ -254,6 +254,27 @@ class TransferService {
           .orderBy('createdAt', descending: true)
           .get();
       return snap.docs.map((d) => PatientTransfer.fromJson(d.data())).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get transfers created by a specific doctor (by their phone number).
+  /// Used in doctor dashboard and history to prevent data leakage
+  /// between different doctor accounts.
+  static Future<List<PatientTransfer>> getByDoctor(String doctorPhone) async {
+    if (doctorPhone.isEmpty) return [];
+    try {
+      final snap = await _db
+          .collection('transfers')
+          .where('sendingDoctor', isEqualTo: doctorPhone)
+          .get();
+      final list = snap.docs
+          .map((d) => PatientTransfer.fromJson(d.data()))
+          .toList();
+      // Sort newest first client-side (avoids composite index requirement)
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
     } catch (e) {
       return [];
     }

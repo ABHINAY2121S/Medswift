@@ -305,10 +305,13 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
     setState(() => _submitting = true);
 
     final doctorName = _doctor?.name ?? 'Doctor';
+    final doctorPhone = _doctor?.phone ?? '';
     final hospitalName = _doctor?.hospitalName ?? 'Hospital';
     final rawPhone = _patientPhoneCtrl.text.trim();
     final normPhone = rawPhone.isEmpty ? '' : AuthService.normalizePhone(rawPhone);
 
+    // sendingDoctor stores the doctor's unique phone number (for secure filtering).
+    // sendingDoctorName stores the display name for UI / viewer.
     final transfer = PatientTransfer(
       id: TransferService.generateId(),
       patientName: _nameCtrl.text.trim(),
@@ -331,7 +334,8 @@ class _CreateTransferScreenState extends State<CreateTransferScreen> {
       riskLevel: _riskLevel,
       riskScore: _riskPercent,
       sendingHospital: hospitalName,
-      sendingDoctor: doctorName,
+      sendingDoctor: doctorPhone.isNotEmpty ? doctorPhone : doctorName,
+      sendingDoctorName: doctorName,
       receivingHospital: _receivingHospitalCtrl.text.trim(),
       createdAt: DateTime.now(),
       attachments: _attachments,

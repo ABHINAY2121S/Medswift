@@ -144,7 +144,7 @@ class _TransferDetailScreenState extends State<TransferDetailScreen> {
               ),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(transfer.sendingDoctor,
+                Text(transfer.sendingDoctorName,
                     style: GoogleFonts.dmSans(
                         fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.dark)),
                 Text(transfer.sendingHospital,
